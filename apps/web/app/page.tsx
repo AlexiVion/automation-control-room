@@ -324,7 +324,9 @@ export default function Dashboard(){
       setWorkflow(graph);
       setCrm(records.items);
       setSession(fresh);
-      setNotice("Nueva sesión de demostración activa. La sesión anterior no se comparte.");
+      setNotice(session?
+        "Nueva sesión de demostración activa. La sesión anterior no se comparte.":
+        "Conexión restablecida. El espacio demo ya está disponible.");
       setScreen("demo");
       setError("");
       const url=new URL(window.location.href);
@@ -379,7 +381,14 @@ export default function Dashboard(){
         {notice&&<div className="sessionNotice" role="status">
           <span>{notice}</span><button type="button" onClick={()=>setNotice("")} aria-label="Cerrar aviso">×</button>
         </div>}
-        {!session&&!sessionExpired&&<div className="empty"><span className="spinner"/> Iniciando workspace aislado…</div>}
+        {!session&&!sessionExpired&&<div className="empty" role="status">
+          {error?<div className="initialRecovery">
+            <p>No pudimos conectar con el entorno de demostración.</p>
+            <button type="button" className="secondary" disabled={busy}
+              onClick={()=>void renewDemo()}>{busy?"Reintentando…":"Reintentar conexión"}</button>
+          </div>:
+          <><span className="spinner"/> Iniciando workspace aislado…</>}
+        </div>}
         {session&&!sessionExpired&&screen==="demo"&&<>
           <section className="controls slice2Controls" aria-label="Iniciar una automatización sintética">
             <div className="choose"><label htmlFor="fixtureSelect">Lead de demostración</label>
