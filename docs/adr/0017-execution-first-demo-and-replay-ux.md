@@ -26,3 +26,7 @@ Hay que implementar todo el vertical slice para demostrarlo. [UX_SPEC](../ux/UX_
 ## Criterio de aprobación
 
 Revisión explícita del propietario más pruebas de proyección de eventos; E2E real y accesibilidad se consideran bloqueos de lanzamiento, no pruebas de este ADR.
+
+## CI evidencia (sin aceptación formal)
+
+[GitHub Actions #41843924596](https://github.com/AlexiVion/automation-control-room/actions/runs/41843924596) **PASS**: contrato de proyección UX con 7 tests, 71 pruebas en suite de verificación y Docker Compose completo validado. Esto demuestra código de **proyección aislada y validación local**, no pantallas, API real ni un producto desplegado. ADR sigue en estado `proposed`.

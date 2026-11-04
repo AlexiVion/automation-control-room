@@ -19,6 +19,7 @@ Open-source, AI-assisted business workflow orchestration. Build workflows visual
 - [Acceptance tests](docs/quality/ACCEPTANCE_TESTS.md)
 - [Architecture decision records](docs/adr/README.md)
 - [Phase 4 roadmap](docs/ROADMAP.md)
+- [Phase 4 consolidated architecture baseline and test evidence](docs/PHASE4_BASELINE.md)
 - [Gate 4F UX specification](docs/ux/UX_SPEC.md)
 - [Gate 4F wireframes](docs/ux/WIREFRAMES.md)
 - [90-second demo acceptance script](docs/ux/DEMO_ACCEPTANCE_SCRIPT.md)
