@@ -4,6 +4,8 @@ on:
     paths:
       - 'packages/contracts/**'
       - 'docs/contracts/**'
+      - 'spikes/gate4d/**'
+      - 'prisma7.config.ts'
       - 'package.json'
       - 'package-lock.json'
       - 'tsconfig.json'
@@ -12,20 +14,55 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     permissions:
-      contents: read
+      contents: write # TEMPORARY for committing lockfile on this trusted branch; switch back to read after
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: acr
+          POSTGRES_PASSWORD: acr_test
+          POSTGRES_DB: acr_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U acr -d acr_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://acr:acr_test@127.0.0.1:5432/acr_test
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-      - name: Install exact lockfile dependencies
-        run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Typecheck strict contracts
+      - name: Install pinned direct dependencies for Gate 4D spike
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Typecheck contracts
         run: npm run typecheck
-      - name: Run structural, graph and OpenAPI contract tests
+      - name: Test contracts
         run: npm run test:contracts
-      - name: Check committed structural JSON Schema snapshot
+      - name: Check JSON Schema snapshot
         run: npm run contracts:check
+      - name: Generate Prisma 7 client
+        run: npx prisma generate --config prisma7.config.ts
+      - name: Create ephemeral spike tables
+        run: npx prisma db push --config prisma7.config.ts --accept-data-loss
+      - name: Typecheck transactional spike
+        run: npm run typecheck:gate4d
+      - name: Run real PostgreSQL transactional, duplicate and worker tests
+        run: npm run test:gate4d
+      - name: Commit candidate npm lockfile only to trusted branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'docs/phase4-architecture-foundation-20261104'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'chore(gate4d): lock Prisma 7 and pg-boss versions'
+            git push origin HEAD:refs/heads/docs/phase4-architecture-foundation-20261104
+          fi

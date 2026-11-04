@@ -5,7 +5,7 @@
 - **4A Product** — [Detailed candidate PRD](product/PRD.md), [demo scenarios](product/DEMO_SCENARIOS.md) and [ADR 0014](adr/0014-anonymous-demo-sandbox-and-ai-modes.md) **written; owner review still pending**. Confirm guest isolation, fixture vs real LLM and numeric budgets.
 - **4B Domain** — [Detailed candidate domain](architecture/DOMAIN_MODEL.md) and [execution semantics](architecture/EXECUTION_SEMANTICS.md) **written; owner review still pending**. Approve entity constraints, transitions, event sequence, immutable versions and ActionLedger.
 - **4C Contracts** — [TypeScript Zod/graph validator](../packages/contracts/src/workflow.ts), [OpenAPI](contracts/openapi.yaml), [typed ports and API DTO](../packages/contracts/src/index.ts), [fixtures/tests](../packages/contracts/test), and [JSON Schema generator](../packages/contracts/scripts/generate-json-schema.ts) **prepared as candidates**; CI, tracked schema snapshot and owner review pending.
-- **4D Reliability** — PostgreSQL-backed transactional queue spike, crash/retry tests, outbox fallback criteria.
+- **4D Reliability** — [real PostgreSQL/Prisma 7/pg-boss 12 spike](../spikes/gate4d/README.md) created with commit/rollback, duplicate, approval CAS, worker-from-backlog and uncertain-effect tests. **Only accepted after CI passes; actual OS-crash test and atomic resume remain pending.**
 - **4E Security** — threat model, SSRF and credential controls, guest sandbox tests.
 - **4F UX/Operations** — 90-second demo, observability, Compose topology and acceptance gate.
 

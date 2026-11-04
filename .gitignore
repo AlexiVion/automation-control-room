@@ -12,3 +12,5 @@ test-results/
 *.log
 .DS_Store
 !.gitkeep
+
+spikes/gate4d/generated/

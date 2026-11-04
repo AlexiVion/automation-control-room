@@ -12,3 +12,7 @@ Exact Prisma and pg-boss versions/adapters must prove shared transaction; otherw
 
 ## Acceptance / reconsideration
 Do not accept until real PostgreSQL commit/rollback and worker crash tests pass.
+
+## Gate 4D validation plan
+
+Proof repository: [`spikes/gate4d`](../../spikes/gate4d/README.md). Pin Prisma 7.10.1, adapter-pg 7.10.1, pg-boss 12.38.0 and PostgreSQL 17. Verify that `boss.send(..., { db: fromPrisma(tx) })` participates in the same transaction and rolls back. This ADR remains **proposed** until CI is green, code is reviewed, and additional crash/recovery and approval re-enqueue invariants are evaluated. If the direct adapter cannot provide atomicity under tested versions, revert to a transactional outbox rather than committing an unsafe two-step write.

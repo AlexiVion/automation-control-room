@@ -23,6 +23,7 @@ Open-source, AI-assisted business workflow orchestration. Build workflows visual
 - [Phase 4 documentation plan (Spanish)](docs/research/PHASE4_DOCUMENT_PLAN.md)
 - [Reference repositories](docs/research/REFERENCE_REPOS.md)
 - [Phase 4 gate issues](.github/PHASE4_ISSUES.md)
+- [Gate 4D PostgreSQL + Prisma/pg-boss reliability spike](spikes/gate4d/README.md)
 - [Contributing](CONTRIBUTING.md)
 
 ## Architectural direction (proposed)

@@ -177,3 +177,7 @@ SSE carries already-persisted redacted data, is authorization-scoped and is **no
 **Gate 4B** accepts the state machine and invariants as a contract only after review. **Gate 4D** requires working tests with pinned PostgreSQL/Prisma/pg-boss versions or an approved transactional outbox fallback.
 
 Referencias: [Domain Model](DOMAIN_MODEL.md), [PRD](../product/PRD.md), [Quality](../quality/ACCEPTANCE_TESTS.md), [ADR 0003](../adr/0003-postgres-queue-pg-boss.md), [ADR 0009](../adr/0009-action-ledger-idempotency.md).
+
+## Gate 4D isolated verification spike
+
+An isolated experiment lives in [`spikes/gate4d/`](../../spikes/gate4d/README.md). It pins Prisma 7.10.1, pg-boss 12.38.0 and PostgreSQL 17 and exercises the `fromPrisma(tx)` adapter against real PostgreSQL. This is test evidence **only after the CI run passes**. It does not replace approval-resume delivery, external idempotency, or process-kill recovery tests.

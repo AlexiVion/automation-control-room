@@ -12,16 +12,23 @@
     "test:contracts": "vitest run packages/contracts/test",
     "test": "npm run test:contracts",
     "contracts:jsonschema": "tsx packages/contracts/scripts/generate-json-schema.ts",
-    "contracts:check": "tsx packages/contracts/scripts/generate-json-schema.ts --check"
+    "contracts:check": "tsx packages/contracts/scripts/generate-json-schema.ts --check",
+    "typecheck:gate4d": "tsc --noEmit -p spikes/gate4d/tsconfig.json",
+    "test:gate4d": "vitest run spikes/gate4d/test --maxWorkers=1"
   },
   "dependencies": {
-    "zod": "4.6.7"
+    "zod": "4.6.7",
+    "@prisma/client": "7.10.1",
+    "@prisma/adapter-pg": "7.10.1",
+    "pg-boss": "12.38.0",
+    "pg": "8.22.0"
   },
   "devDependencies": {
     "@types/node": "22.15.29",
     "typescript": "5.9.3",
     "tsx": "4.23.15",
     "vitest": "5.1.0",
-    "yaml": "2.9.1"
+    "yaml": "2.9.1",
+    "prisma": "7.10.1"
   }
 }

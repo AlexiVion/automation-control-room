@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client"
+  output = "../generated/prisma"
+  moduleFormat = "esm"
+}
+datasource db {
+  provider = "postgresql"
+}
+model SpikeExecution {
+  id           String   @id @default(uuid()) @db.Uuid
+  sourceId     String
+  eventId      String
+  status       String   @default("queued")
+  attempts     Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  @@unique([sourceId, eventId])
+}
+model SpikeEvent {
+  id           String   @id @default(uuid()) @db.Uuid
+  executionId  String   @db.Uuid
+  sequence     Int
+  eventType    String
+  createdAt    DateTime @default(now())
+  @@unique([executionId, sequence])
+}
+model SpikeApproval {
+  id           String   @id @default(uuid()) @db.Uuid
+  executionId  String   @db.Uuid
+  status       String   @default("pending")
+  @@unique([executionId])
+}
+model SpikeAction {
+  operationKey String   @id
+  executionId  String   @db.Uuid
+  status       String
+}
+model SpikeCrmRecord {
+  id           String   @id @default(uuid()) @db.Uuid
+  externalKey  String   @unique
+  executionId  String   @db.Uuid
+}
