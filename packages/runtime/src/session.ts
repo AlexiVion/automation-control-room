@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { createGuestSession, validateGuestSession, csrfToken, hashToken } from "../../security/src/sessions.js";
+import { createGuestSession, csrfToken, hashToken } from "../../security/src/sessions.js";
 import { db } from "./db.js";
 export const SESSION_TTL = 24 * 60 * 60 * 1000;
 export const CSRF_KEY = (() => {
@@ -20,26 +20,64 @@ export async function issueSession(nowMs = Date.now()) {
   return { token: issued.token, workspaceId, csrf: csrfToken(CSRF_KEY,issued.record),
     expiresAt:new Date(nowMs+SESSION_TTL).toISOString() };
 }
-export async function resolveSession(token: string | undefined, nowMs=Date.now()) {
-  if(!token)return null;
+/**
+ * Authenticate + refresh idle TTL in ONE atomic PostgreSQL statement.
+ *
+ * The previous implementation performed findUnique() followed by updateMany()
+ * gated on a per-request JS Date.now(). Parallel browser requests (inspector,
+ * CRM and SSE) could race; the losing request returned 401 SESSION_REQUIRED
+ * even though the session remained valid. PostgreSQL now owns the clock and
+ * serializes the row update; GREATEST prevents lastSeenAt moving backward.
+ *
+ * The opaque token is never stored or logged, only its SHA-256 hash.
+ */
+export async function resolveSession(token: string | undefined) {
+  if (!token) return null;
   let tokenHash: string;
-  try{tokenHash=hashToken(token)}catch{return null;}
-  const s=await db.demoSession.findUnique({where:{tokenHash},include:{workspace:true}});
-  if(!s||s.workspace.expiresAt.getTime()<=nowMs)return null;
-  const record={
-    workspaceId:s.workspaceId,sessionId:s.id,tokenHash:s.tokenHash,
-    createdAtMs:s.createdAt.getTime(),lastSeenAtMs:s.lastSeenAt.getTime(),
-    absoluteExpiresAtMs:s.expiresAt.getTime()
+  try { tokenHash = hashToken(token); } catch { return null; }
+
+  type ActiveSession = {
+    workspaceId: string;
+    sessionId: string;
+    tokenHash: string;
+    createdAt: Date;
+    lastSeenAt: Date;
+    expiresAt: Date;
   };
-  if(!validateGuestSession(token,record,nowMs))return null;
-  const touched=await db.demoSession.updateMany({
-    where:{id:s.id,expiresAt:{gt:new Date(nowMs)},lastSeenAt:{lte:new Date(nowMs)}},
-    data:{lastSeenAt:new Date(nowMs)}
-  });
-  return touched.count===1?{
-    workspaceId:s.workspaceId,sessionId:s.id,csrf:csrfToken(CSRF_KEY,record),
-    expiresAt:s.expiresAt.toISOString()
-  }:null;
+  const rows = await db.$queryRaw<ActiveSession[]>`
+    UPDATE "DemoSession" AS s
+    SET "lastSeenAt" = GREATEST(s."lastSeenAt", CURRENT_TIMESTAMP)
+    FROM "DemoWorkspace" AS w
+    WHERE s."tokenHash" = ${tokenHash}
+      AND s."workspaceId" = w."id"
+      AND s."createdAt" <= CURRENT_TIMESTAMP
+      AND s."lastSeenAt" <= CURRENT_TIMESTAMP
+      AND s."lastSeenAt" > CURRENT_TIMESTAMP - INTERVAL '30 minutes'
+      AND s."expiresAt" > CURRENT_TIMESTAMP
+      AND w."expiresAt" > CURRENT_TIMESTAMP
+    RETURNING s."workspaceId" AS "workspaceId",
+      s."id" AS "sessionId",
+      s."tokenHash" AS "tokenHash",
+      s."createdAt" AS "createdAt",
+      s."lastSeenAt" AS "lastSeenAt",
+      s."expiresAt" AS "expiresAt"
+  `;
+  const s = rows[0];
+  if (!s) return null;
+  const record = {
+    workspaceId: s.workspaceId,
+    sessionId: s.sessionId,
+    tokenHash: s.tokenHash,
+    createdAtMs: s.createdAt.getTime(),
+    lastSeenAtMs: s.lastSeenAt.getTime(),
+    absoluteExpiresAtMs: s.expiresAt.getTime()
+  };
+  return {
+    workspaceId: s.workspaceId,
+    sessionId: s.sessionId,
+    csrf: csrfToken(CSRF_KEY, record),
+    expiresAt: s.expiresAt.toISOString()
+  };
 }
 export async function budget(workspaceId:string) {
   const w=await db.demoWorkspace.findUniqueOrThrow({where:{id:workspaceId}});

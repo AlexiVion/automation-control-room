@@ -130,3 +130,15 @@ Start-Process "http://localhost:3300"
 ```
 
 The images need **no rebuild** because only Compose settings and documentation changed. If 3300 is already occupied too, use another **free** local port consistently. The PostgreSQL volume is preserved by this procedure.
+
+## Browser QA issue: spurious SESSION_REQUIRED on concurrent UI reads (2026-11-04)
+
+User-supplied browser screenshots showed a persisted `waiting_approval` execution (five timeline events) and a red `SESSION_REQUIRED` banner across the demo, Activity and CRM views. The approval was requested; no CRM row should exist yet. The flow did render correctly, but **its session handling was not reliable**.
+
+Root cause in `packages/runtime/src/session.ts`: authentication read `lastSeenAt` and subsequently used `updateMany({lastSeenAt: {lte: nowMs}})`, returning 401 when `count===0`. Parallel browser fetches and SSE authentication could race, and a request whose timestamp was just before another request's `lastSeenAt` was incorrectly classified as invalid.
+
+Repair: a **single PostgreSQL UPDATE ... FROM workspace ... RETURNING** authenticates and refreshes the idle clock atomically, with database-owned `CURRENT_TIMESTAMP` and `GREATEST`. It checks 30-minute idle expiry, absolute expiry and workspace expiry without trusting the browser clock. In the UI, successful refresh clears any stale error, and the approval node remains visually pending until a real `approval.approved` event is persisted.
+
+Regression coverage: 96 concurrent Next.js-proxied browser-session GETs must all return 200; an explicitly idle-expired session must still return 401. Existing approval/retry/CRM/quota/isolation/CSRF tests must remain PASS. This is a candidate repair pending CI and an actual Windows browser retest; old container images do **not** contain the fix until rebuilt.
+
+The unchanged `CRM 0` while `waiting_approval` is expected: the worker writes only **after** approval, and a rejected action does not write.

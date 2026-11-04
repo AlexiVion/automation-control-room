@@ -71,6 +71,7 @@ export default function Dashboard(){
       ]);
       if(details){setSnapshot(details);setSession(s=>s?{...s,budgets:details.budgets}:s);}
       setCrm(records.items);
+      setError("");
     }catch(e){setError(e instanceof Error?e.message:"ERROR_DE_CONEXION");}
     finally{refreshBusy.current=false;}
   },[runId]);
@@ -128,8 +129,11 @@ export default function Dashboard(){
   const cards=steps.map(step=>{
     const skipped=!!snapshot&&(!isHigh&&["approval","crm","done_high"].includes(step.id) &&
       snapshot.execution.status==="completed");
-    const done=executedNodeIds.has(step.id);
-    return {...step,done,skipped};
+    const awaiting=step.id==="approval"&&status==="waiting_approval";
+    const approved=!!snapshot?.events.some(e=>e.eventType==="approval.approved");
+    const rejected=step.id==="approval"&&!!snapshot?.events.some(e=>e.eventType==="approval.rejected");
+    const done=executedNodeIds.has(step.id) && (step.id!=="approval"||approved);
+    return {...step,done,skipped,awaiting,rejected};
   });
   const currentNode=steps.find(s=>s.id===selectedNode);
   const nodeEvents=snapshot?.events.filter(event=>event.nodeId===selectedNode)??[];
@@ -181,9 +185,9 @@ export default function Dashboard(){
                 {!snapshot&&<div className="canvasHint">Elegí un lead y pulsá «Simular entrada» para comenzar una ejecución real.</div>}
                 <div className="flowTrack">
                   {cards.map((step,i)=><div key={step.id} className="trackItem">
-                    <button onClick={()=>setSelectedNode(step.id)} className={"flowNode "+(selectedNode===step.id?"selected ":"")+(step.done?"done ":"")+(step.skipped?"skipped ":"")} aria-pressed={selectedNode===step.id}>
+                    <button onClick={()=>setSelectedNode(step.id)} className={"flowNode "+(selectedNode===step.id?"selected ":"")+(step.done?"done ":"")+(step.skipped?"skipped ":"")+(step.awaiting?"awaiting ":"")+(step.rejected?"rejected ":"")} aria-label={step.title+": "+(step.skipped?"omitido":step.awaiting?"esperando aprobación":step.rejected?"rechazado":step.done?"completado":"pendiente")} aria-pressed={selectedNode===step.id}>
                       <span className="nodeNumber">{step.num}</span><span className="nodeBody"><strong>{step.title}</strong><small>{step.subtitle}</small></span>
-                      <span className="nodeState">{step.skipped?"—":step.done?"✓":"·"}</span>
+                      <span className="nodeState">{step.skipped?"—":step.awaiting?"…":step.rejected?"×":step.done?"✓":"·"}</span>
                     </button>
                     {i<cards.length-1&&<div className="connector"><div/></div>}
                   </div>)}

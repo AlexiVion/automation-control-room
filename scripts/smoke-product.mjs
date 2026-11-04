@@ -43,6 +43,18 @@ const proxiedMe=await fetch(web+"/v1/demo/me",{headers:{Cookie:proxiedCookie}});
 assert.equal(proxiedMe.status,200,"Browser cookie must pass through Next.js reverse proxy");
 assert.equal((await proxiedMe.json()).workspaceId,proxiedBody.workspaceId);
 log("Next.js same-origin API proxy forwards session cookie");
+// Browser renders inspector, CRM and SSE concurrently; all authenticated reads
+// must remain valid even when many requests touch the same session at once.
+for (let round = 0; round < 3; round++) {
+  const responses = await Promise.all(Array.from({length:32}, (_,i) =>
+    fetch(web + (i%2===0?"/v1/demo/me":"/v1/demo/crm"),
+      {headers:{Cookie:proxiedCookie}})
+  ));
+  assert.deepEqual(responses.map(r=>r.status),Array(32).fill(200),
+    "concurrent browser reads must not sporadically return SESSION_REQUIRED");
+  await Promise.all(responses.map(r=>r.arrayBuffer()));
+}
+log("96 parallel browser-session reads without spurious 401");
 const created=await json("/v1/demo/sessions",{method:"POST",expected:201});
 const cookie=created.response.headers.get("set-cookie")?.split(";")[0];
 assert.ok(cookie?.startsWith("acr_demo_session="));
@@ -112,4 +124,23 @@ assert.equal((await json("/v1/demo/crm",{cookie:otherCookie})).value.items.lengt
 await json("/v1/demo/events",{method:"POST",cookie:otherCookie,csrf:"a".repeat(64),
   body:{fixtureId:"lead_demo_001"},expected:403});
 log("Cross-workspace isolation + CSRF rejection");
+
+// Sessions must still expire after 30 min idle; fixing concurrent 401 may not
+// turn invalid/expired sessions into authenticated ones.
+if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL required for expiry test");
+const { createHash } = await import("node:crypto");
+const { default: pg } = await import("pg");
+const client = new pg.Client({connectionString:process.env.DATABASE_URL});
+await client.connect();
+try {
+  const token = otherCookie.split("=")[1];
+  const hash = createHash("sha256").update(token).digest("hex");
+  const result = await client.query(
+    `UPDATE "DemoSession" SET "lastSeenAt" = NOW() - INTERVAL '31 minutes' WHERE "tokenHash" = $1`,
+    [hash]
+  );
+  assert.equal(result.rowCount,1);
+} finally { await client.end(); }
+await json("/v1/demo/me",{cookie:otherCookie,expected:401});
+log("Expired idle guest session is rejected");
 console.log("PRODUCT_SLICE1_E2E_PASS");
