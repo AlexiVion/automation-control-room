@@ -5,6 +5,7 @@ on:
       - 'packages/contracts/**'
       - 'docs/contracts/**'
       - 'package.json'
+      - 'package-lock.json'
       - 'tsconfig.json'
       - '.github/workflows/contracts.yml'
   workflow_dispatch:
@@ -13,39 +14,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
-      contents: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      # Lockfile is pending until a registry-connected environment generates it.
-      # Replace npm install with npm ci after committing package-lock.json.
-      - name: Install pinned direct contract dependencies
-        run: npm install --ignore-scripts --no-audit --no-fund
+          cache: npm
+      - name: Install exact lockfile dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Typecheck strict contracts
         run: npm run typecheck
       - name: Run structural, graph and OpenAPI contract tests
         run: npm run test:contracts
-      - name: Generate versioned-schema candidate
-        run: npm run contracts:jsonschema
-      - name: Commit generated snapshots on trusted Phase 4 branch
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'docs/phase4-architecture-foundation-20261104'
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add package-lock.json packages/contracts/schema/workflow-draft.v1.schema.json
-          if ! git diff --cached --quiet; then
-            git commit -m 'chore(contracts): commit generated JSON Schema and npm lockfile'
-            git push origin HEAD:refs/heads/docs/phase4-architecture-foundation-20261104
-          fi
-      - name: Upload generated schema and lockfile for review
-        uses: actions/upload-artifact@v4
-        with:
-          name: gate4c-generated-contract-snapshots
-          path: |
-            packages/contracts/schema/workflow-draft.v1.schema.json
-            package-lock.json
-          retention-days: 7
+      - name: Check committed structural JSON Schema snapshot
+        run: npm run contracts:check
