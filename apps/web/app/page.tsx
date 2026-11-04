@@ -118,13 +118,32 @@ export default function Dashboard(){
 
   // Never persist tokens or workspace identifiers in a URL. An execution ID
   // remains scoped to the cookie on the API, and is safe to bookmark.
+  // URL changes are navigable: Back/Forward restores selected run and screen.
   useEffect(()=>{
-    const params=new URLSearchParams(window.location.search);
-    const view=params.get("view");
-    if(view==="demo"||view==="activity"||view==="crm")setScreen(view);
-    const run=params.get("run");
-    if(run&&uuidPattern.test(run)){currentRun.current=run;setRunId(run);}
+    const fromURL=()=>{
+      const params=new URLSearchParams(window.location.search);
+      const view=params.get("view");
+      const selected=params.get("run");
+      const id=selected&&uuidPattern.test(selected)?selected:null;
+      if(currentRun.current!==id)setSnapshot(null);
+      currentRun.current=id;
+      setRunId(id);
+      setScreen(view==="demo"||view==="activity"||view==="crm"?view:"demo");
+    };
+    fromURL();
     setHydrated(true);
+    window.addEventListener("popstate",fromURL);
+    return()=>window.removeEventListener("popstate",fromURL);
+  },[]);
+  const pushRoute=useCallback((view:Screen,id:string|null)=>{
+    const url=new URL(window.location.href);
+    url.searchParams.set("view",view);
+    if(id)url.searchParams.set("run",id);
+    else url.searchParams.delete("run");
+    const target=url.pathname+url.search;
+    if(target!==window.location.pathname+window.location.search){
+      window.history.pushState(null,"",target);
+    }
   },[]);
   useEffect(()=>{
     if(!hydrated)return;
@@ -173,8 +192,9 @@ export default function Dashboard(){
     if(id!==currentRun.current){setSnapshot(null);setSelectedNode("source");}
     currentRun.current=id;
     setRunId(id);
+    pushRoute(view,id);
     setScreen(view);
-  },[]);
+  },[pushRoute]);
   useEffect(()=>{
     let active=true;
     void boot().then(async s=>{
@@ -248,17 +268,22 @@ export default function Dashboard(){
     const needle=search.toLowerCase().trim();
     return !needle || (x.leadId+" "+x.id+" "+x.category).toLowerCase().includes(needle);
   });
-  function navigation(view:Screen){setScreen(view);}
+  function navigation(view:Screen){
+    if(view===screen)return;
+    pushRoute(view,currentRun.current);
+    setScreen(view);
+  }
   return <div className="shell slice2Shell">
+    <a className="skipLink" href="#main-content">Saltar al contenido</a>
     <aside className="sidebar">
       <div className="brand"><span className="brandmark">◈</span><div><strong>Automation</strong><span>Control Room</span></div></div>
       <div className="navCaption">WORKSPACE</div>
       <nav className="sideNav" aria-label="Principal">
-        <button className={screen==="demo"?"navItem current":"navItem"} onClick={()=>navigation("demo")}>
+        <button className={screen==="demo"?"navItem current":"navItem"} aria-current={screen==="demo"?"page":undefined} title="Demo interactiva" onClick={()=>navigation("demo")}>
           <span>◫</span> Demo interactiva</button>
-        <button className={screen==="activity"?"navItem current":"navItem"} onClick={()=>navigation("activity")}>
+        <button className={screen==="activity"?"navItem current":"navItem"} aria-current={screen==="activity"?"page":undefined} title="Historial de ejecuciones" onClick={()=>navigation("activity")}>
           <span>◷</span> Historial <small>{historyTotal}</small></button>
-        <button className={screen==="crm"?"navItem current":"navItem"} onClick={()=>navigation("crm")}>
+        <button className={screen==="crm"?"navItem current":"navItem"} aria-current={screen==="crm"?"page":undefined} title="CRM ficticio" onClick={()=>navigation("crm")}>
           <span>▤</span> CRM ficticio <small>{crm.length}</small></button>
       </nav>
       <div className="sideBottom"><span className="sidebarDot"/> Sesión local aislada
@@ -267,7 +292,7 @@ export default function Dashboard(){
         <p>Los datos del historial y CRM pertenecen únicamente a este espacio. Una sesión distinta comienza vacía.</p>
       </div>
     </aside>
-    <main className="main">
+    <main className="main" id="main-content" tabIndex={-1}>
       <header className="topbar">
         <div className="breadcrumb">Automation Control Room <span>/</span>
           <strong>{screen==="demo"?"Demo":screen==="activity"?"Historial de ejecuciones":"CRM ficticio"}</strong>
@@ -301,6 +326,20 @@ export default function Dashboard(){
               onClick={()=>void start()}>{busy?"Procesando…":"▶ Iniciar automatización"}</button>
           </section>
           <Summary run={current} crmCount={crm.length} remaining={session.budgets.runsRemaining}/>
+          <p className="srOnly" role="status" aria-live="polite" aria-atomic="true">
+            {current?("Ejecución "+(statuses[current.status]??current.status)+". "+current.lastEventSeq+" eventos persistidos."): "Ninguna ejecución seleccionada."}
+          </p>
+          {snapshot?.approval?.status==="pending"&&current?.status==="waiting_approval"&&
+            <section className="approvalCard slice2Approval" aria-label="Aprobación pendiente">
+              <div><span className="approvalIcon">!</span></div>
+              <div className="approvalInfo"><h2>Esta acción necesita tu aprobación</h2>
+                <p>Se creará o actualizará <strong>{current.leadId}</strong> en el CRM ficticio.
+                  La decisión se guarda en PostgreSQL y puede revisarse en el historial.</p>
+                <small>Caduca {dateTime(snapshot.approval.expiresAt)} · Sin integraciones externas.</small></div>
+              <div className="approvalActions">
+                <button className="secondary" disabled={busy} onClick={()=>void decide("rejected")}>Rechazar</button>
+                <button className="primary" disabled={busy} onClick={()=>void decide("approved")}>Aprobar escritura</button></div>
+            </section>}
           <div className="slice2Studio">
             <WorkflowCanvas graph={workflow?.graph??null} digest={workflow?.graphDigest}
               events={events} execution={current} selectedNode={selectedNode}
@@ -328,17 +367,6 @@ export default function Dashboard(){
               {current&&<button className="inspectorRunLink" onClick={()=>pickRun(current.id,"activity")}>Abrir historial completo ↗</button>}
             </aside>
           </div>
-          {snapshot?.approval?.status==="pending"&&current?.status==="waiting_approval"&&
-            <section className="approvalCard slice2Approval" aria-label="Aprobación pendiente">
-              <div><span className="approvalIcon">!</span></div>
-              <div className="approvalInfo"><h2>Esta acción necesita tu aprobación</h2>
-                <p>Se creará o actualizará <strong>{current.leadId}</strong> en el CRM ficticio.
-                  La decisión se guarda en PostgreSQL y puede revisarse en el historial.</p>
-                <small>Caduca {dateTime(snapshot.approval.expiresAt)} · Sin integraciones externas.</small></div>
-              <div className="approvalActions">
-                <button className="secondary" disabled={busy} onClick={()=>void decide("rejected")}>Rechazar</button>
-                <button className="primary" disabled={busy} onClick={()=>void decide("approved")}>Aprobar escritura</button></div>
-            </section>}
           <section className="timelinePanel slice2Timeline">
             <div className="panelHead"><div><h2>Timeline de la ejecución</h2>
               <p>Eventos almacenados en PostgreSQL, en orden de secuencia.</p></div>
@@ -354,13 +382,20 @@ export default function Dashboard(){
               <button className="plainButton" onClick={()=>void reloadHistory(true)}
                 disabled={historyLoading}>↻</button></div>
             <div className="historyFilters">
-              <label htmlFor="runSearch">Buscar por lead o ID</label>
+              <label htmlFor="runSearch">Filtrar filas cargadas por lead o ID</label>
               <input id="runSearch" type="search" value={search} onChange={e=>setSearch(e.target.value)}
                 placeholder="Buscar ejecución…" />
               <label htmlFor="runStatus">Estado</label>
               <select id="runStatus" value={filter} onChange={e=>{setFilter(e.target.value);setHistory([]);setHistoryCursor(null)}}>
                 {statusOptions.map(([value,label])=><option key={value} value={value}>{label}</option>)}
               </select>
+              <p className="historySearchHelp" id="historySearchHelp">
+                {visibleHistory.length} coincidencias entre {history.length} ejecuciones cargadas.
+                La búsqueda de texto no consulta otras páginas del servidor.
+              </p>
+              {search&&<button type="button" className="historyClear" onClick={()=>setSearch("")}>
+                Limpiar búsqueda
+              </button>}
             </div>
             <div className="historyItems">
               {visibleHistory.map(item=><button key={item.id} className={"historyRow "+(runId===item.id?"selected":"")}
@@ -370,7 +405,9 @@ export default function Dashboard(){
                 <span className="historyRowFooter"><span>{item.id.slice(0,11)}…</span>
                   <span>{item.retryCount} reintentos</span></span>
               </button>)}
-              {!visibleHistory.length&&!historyLoading&&<div className="historyEmpty">No hay ejecuciones para este filtro.</div>}
+              {!visibleHistory.length&&!historyLoading&&<div className="historyEmpty">
+                {search?"No hay coincidencias en las páginas cargadas. Podés cargar más páginas o limpiar la búsqueda.":"No hay ejecuciones para este filtro."}
+              </div>}
               {historyLoading&&<div className="historyLoading">Consultando historial…</div>}
               {historyCursor&&<button className="historyMore" disabled={historyLoading}
                 onClick={()=>void reloadHistory(false,historyCursor)}>Cargar anteriores ↓</button>}
@@ -406,7 +443,7 @@ export default function Dashboard(){
           </tr>)}</tbody></table></div>:<div className="slice2Empty">
             <strong>Aún no hay escrituras confirmadas.</strong>
             <p>Iniciá un lead de prioridad alta y aprobá la acción desde Demo interactiva.</p>
-            <button className="primary" onClick={()=>setScreen("demo")}>Ir a la demo</button>
+            <button className="primary" onClick={()=>navigation("demo")}>Ir a la demo</button>
           </div>}
         </section>}
         <footer>Automation Control Room · Fase 5 / Slice 2 · Demo local · Datos sintéticos · Código abierto</footer>
