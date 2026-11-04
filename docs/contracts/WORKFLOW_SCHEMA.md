@@ -23,5 +23,12 @@
 ## Publication validation
 Exactly one trigger; unique IDs; existing edge endpoints; acyclic reachable graph; bounded path length/fanout/nodes; allowed node types only; no code interpolation/eval; typed declarative data bindings; required approvals; authorized credential references and outbound destinations; explicit effect classification. A versioned published graph is immutable and has a digest.
 
+## Invariante de ejecución secuencial propuesta (derivada de Gate 4B)
+
+- En MVP **no** se admiten nodos en paralelo, aristas de join ni loops. Cada step tiene como máximo una continuación ejecutable; `condition` selecciona entre dos aristas mutuamente excluyentes `true`/`false`.
+- El grafo se valida al publicar; la rama no seleccionada debe quedar `skipped` con evento persistido.
+- A lo sumo un nodo ejecutable en estado `running` por Execution. Los detalles de JSON binding, branching y skip propagation requieren schema y ejemplos formales en Gate 4C.
+- El ejemplo de arriba ilustra únicamente un camino lineal; no es el caso completo del PRD (que sí incluye condición).
+
 ## Gate 4C outstanding
 Full Zod schemas, error codes, branch semantics, JSON binding path grammar, skipped-node transitions and schema evolution/migrations. The example is a design sketch, **not executable code**.
