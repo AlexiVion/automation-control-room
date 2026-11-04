@@ -38,7 +38,7 @@ const statusOptions=[
 ] as const;
 const terminal=new Set(["completed","cancelled","failed","needs_review"]);
 const humanError:Record<string,string>={
-  SESSION_REQUIRED:"La sesión venció. Recargá la página para crear otra sesión demo.",
+  SESSION_REQUIRED:"La sesión venció. Iniciá un nuevo espacio demo para continuar, sin compartir los datos anteriores.",
   DEMO_QUOTA_REACHED:"Se alcanzó el límite de 5 ejecuciones. La sesión tiene un presupuesto diario.",
   APPROVAL_ALREADY_DECIDED_OR_EXPIRED:"Esta aprobación ya fue decidida o caducó. El estado se volvió a consultar.",
   CSRF_REQUIRED:"No se pudo validar la sesión. Recargá la página.",
@@ -58,7 +58,14 @@ let initialSession:Promise<Session>|null=null;
 function boot():Promise<Session>{
   if(!initialSession){
     initialSession=getJSON<Session>("/v1/demo/me")
-      .catch(()=>getJSON<Session>("/v1/demo/sessions",{method:"POST"}))
+      .catch(error=>{
+        // Only "no guest session" warrants a new workspace.
+        // A 500/network error must not be masked by creating another session.
+        if(error instanceof Error&&error.message==="SESSION_REQUIRED"){
+          return getJSON<Session>("/v1/demo/sessions",{method:"POST"});
+        }
+        throw error;
+      })
       .catch(e=>{initialSession=null;throw e});
   }
   return initialSession;
@@ -104,6 +111,10 @@ export default function Dashboard(){
   const [selectedNode,setSelectedNode]=useState("source");
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
+  const [notice,setNotice]=useState("");
+  const screenTitle=useRef<HTMLHeadingElement|null>(null);
+  const previousScreen=useRef<Screen|null>(null);
+  const sessionExpired=error==="SESSION_REQUIRED";
   const [streamConnected,setStreamConnected]=useState(false);
   const [hydrated,setHydrated]=useState(false);
   const [history,setHistory]=useState<HistoryRun[]>([]);
@@ -118,13 +129,39 @@ export default function Dashboard(){
 
   // Never persist tokens or workspace identifiers in a URL. An execution ID
   // remains scoped to the cookie on the API, and is safe to bookmark.
+  // URL changes are navigable: Back/Forward restores selected run and screen.
   useEffect(()=>{
-    const params=new URLSearchParams(window.location.search);
-    const view=params.get("view");
-    if(view==="demo"||view==="activity"||view==="crm")setScreen(view);
-    const run=params.get("run");
-    if(run&&uuidPattern.test(run)){currentRun.current=run;setRunId(run);}
+    const fromURL=()=>{
+      const params=new URLSearchParams(window.location.search);
+      const view=params.get("view");
+      const selected=params.get("run");
+      const id=selected&&uuidPattern.test(selected)?selected:null;
+      if(currentRun.current!==id)setSnapshot(null);
+      currentRun.current=id;
+      setRunId(id);
+      setScreen(view==="demo"||view==="activity"||view==="crm"?view:"demo");
+    };
+    fromURL();
     setHydrated(true);
+    window.addEventListener("popstate",fromURL);
+    return()=>window.removeEventListener("popstate",fromURL);
+  },[]);
+  useEffect(()=>{
+    if(!hydrated)return;
+    if(previousScreen.current!==null&&previousScreen.current!==screen){
+      screenTitle.current?.focus();
+    }
+    previousScreen.current=screen;
+  },[screen,hydrated]);
+  const pushRoute=useCallback((view:Screen,id:string|null)=>{
+    const url=new URL(window.location.href);
+    url.searchParams.set("view",view);
+    if(id)url.searchParams.set("run",id);
+    else url.searchParams.delete("run");
+    const target=url.pathname+url.search;
+    if(target!==window.location.pathname+window.location.search){
+      window.history.pushState(null,"",target);
+    }
   },[]);
   useEffect(()=>{
     if(!hydrated)return;
@@ -166,15 +203,27 @@ export default function Dashboard(){
       }
       setCrm(records.items);
       setError("");
-    }catch(e){setError(e instanceof Error?e.message:"REFRESH_FAILED");}
+    }catch(e){
+      const code=e instanceof Error?e.message:"REFRESH_FAILED";
+      if(code==="EXECUTION_NOT_FOUND"&&id===currentRun.current){
+        // Old links are not access grants: the active workspace is authoritative.
+        currentRun.current=null;
+        setRunId(null);
+        setSnapshot(null);
+        setSelectedNode("source");
+        setNotice("La ejecución del enlace pertenece a otra sesión demo o ya venció.");
+        setError("");
+      }else setError(code);
+    }
     finally{refreshLock.current=false;}
   },[]);
   const pickRun=useCallback((id:string,view:Screen="activity")=>{
     if(id!==currentRun.current){setSnapshot(null);setSelectedNode("source");}
     currentRun.current=id;
     setRunId(id);
+    pushRoute(view,id);
     setScreen(view);
-  },[]);
+  },[pushRoute]);
   useEffect(()=>{
     let active=true;
     void boot().then(async s=>{
@@ -195,11 +244,11 @@ export default function Dashboard(){
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
   useEffect(()=>{
-    if(!session)return;
+    if(!session||sessionExpired)return;
     void refresh();
     const timer=setInterval(()=>{void refresh()},2400);
     return()=>clearInterval(timer);
-  },[runId,session?.workspaceId,refresh]);
+  },[runId,session?.workspaceId,refresh,sessionExpired]);
   useEffect(()=>{
     if(!session||!runId)return;
     const stream=new EventSource("/v1/executions/"+runId+"/events");
@@ -209,11 +258,11 @@ export default function Dashboard(){
     return()=>{stream.close();setStreamConnected(false)};
   },[runId,session?.workspaceId,refresh]);
   useEffect(()=>{
-    if(screen!=="activity"||!session)return;
+    if(screen!=="activity"||!session||sessionExpired)return;
     void reloadHistory(true);
     // Explicit refresh preserves previously loaded cursor pages.
     // Run creation and approval also refresh the latest history.
-  },[screen,session?.workspaceId,filter,reloadHistory]);
+  },[screen,session?.workspaceId,filter,reloadHistory,sessionExpired]);
   async function start(){
     if(!session||busy||session.budgets.runsRemaining<=0)return;
     setBusy(true);setError("");
@@ -248,18 +297,58 @@ export default function Dashboard(){
     const needle=search.toLowerCase().trim();
     return !needle || (x.leadId+" "+x.id+" "+x.category).toLowerCase().includes(needle);
   });
-  function navigation(view:Screen){setScreen(view);}
+  function navigation(view:Screen){
+    if(view===screen)return;
+    pushRoute(view,currentRun.current);
+    setScreen(view);
+  }
+  async function renewDemo(){
+    if(busy)return;
+    setBusy(true);
+    try{
+      // The guest explicitly accepts starting a fresh isolated session.
+      initialSession=null;
+      const fresh=await boot();
+      const [graph,records]=await Promise.all([
+        getJSON<Workflow>("/v1/demo/workflow"),
+        getJSON<{items:Crm[]}>("/v1/demo/crm")
+      ]);
+      currentRun.current=null;
+      setRunId(null);
+      setSnapshot(null);
+      setSelectedNode("source");
+      setHistory([]);
+      setHistoryCursor(null);
+      setHistoryTotal(0);
+      setFixtures(fresh.fixtures);
+      setWorkflow(graph);
+      setCrm(records.items);
+      setSession(fresh);
+      setNotice(session?
+        "Nueva sesión de demostración activa. La sesión anterior no se comparte.":
+        "Conexión restablecida. El espacio demo ya está disponible.");
+      setScreen("demo");
+      setError("");
+      const url=new URL(window.location.href);
+      url.searchParams.set("view","demo");
+      url.searchParams.delete("run");
+      window.history.replaceState(null,"",url.pathname+url.search);
+      void reloadHistory(true);
+    }catch(e){setError(e instanceof Error?e.message:"SESSION_RESTART_FAILED");}
+    finally{setBusy(false);}
+  }
   return <div className="shell slice2Shell">
+    <a className="skipLink" href="#main-content">Saltar al contenido</a>
     <aside className="sidebar">
       <div className="brand"><span className="brandmark">◈</span><div><strong>Automation</strong><span>Control Room</span></div></div>
       <div className="navCaption">WORKSPACE</div>
       <nav className="sideNav" aria-label="Principal">
-        <button className={screen==="demo"?"navItem current":"navItem"} onClick={()=>navigation("demo")}>
+        <button className={screen==="demo"?"navItem current":"navItem"} aria-current={screen==="demo"?"page":undefined} title="Demo interactiva" onClick={()=>navigation("demo")}>
           <span>◫</span> Demo interactiva</button>
-        <button className={screen==="activity"?"navItem current":"navItem"} onClick={()=>navigation("activity")}>
-          <span>◷</span> Historial <small>{historyTotal}</small></button>
-        <button className={screen==="crm"?"navItem current":"navItem"} onClick={()=>navigation("crm")}>
-          <span>▤</span> CRM ficticio <small>{crm.length}</small></button>
+        <button className={screen==="activity"?"navItem current":"navItem"} aria-current={screen==="activity"?"page":undefined} title="Historial de ejecuciones" onClick={()=>navigation("activity")}>
+          <span>◷</span> Historial <small>{sessionExpired?"—":historyTotal}</small></button>
+        <button className={screen==="crm"?"navItem current":"navItem"} aria-current={screen==="crm"?"page":undefined} title="CRM ficticio" onClick={()=>navigation("crm")}>
+          <span>▤</span> CRM ficticio <small>{sessionExpired?"—":crm.length}</small></button>
       </nav>
       <div className="sideBottom"><span className="sidebarDot"/> Sesión local aislada
         <p>Espacio demo: <strong title="Identificador abreviado del workspace">
@@ -267,32 +356,46 @@ export default function Dashboard(){
         <p>Los datos del historial y CRM pertenecen únicamente a este espacio. Una sesión distinta comienza vacía.</p>
       </div>
     </aside>
-    <main className="main">
+    <main className="main" id="main-content" tabIndex={-1}>
       <header className="topbar">
         <div className="breadcrumb">Automation Control Room <span>/</span>
           <strong>{screen==="demo"?"Demo":screen==="activity"?"Historial de ejecuciones":"CRM ficticio"}</strong>
         </div>
         <div className="topRight"><span className="environment">LOCAL · SLICE 2</span>
-          <a href="https://github.com/AlexiVion/automation-control-room" target="_blank" rel="noreferrer">GitHub ↗</a></div>
+          <a href="https://github.com/AlexiVion/automation-control-room/tree/feat/phase5-slice2-ux-history-20261104" target="_blank" rel="noreferrer">Código de demo ↗</a></div>
       </header>
       <div className="content slice2Content">
         <div className="heading slice2Heading">
           <div>
-            <h1>{screen==="demo"?"Tu automatización, paso a paso":screen==="activity"?"Historial de ejecuciones":"CRM de demostración"}</h1>
+            <h1 ref={screenTitle} tabIndex={-1}>{screen==="demo"?"Tu automatización, paso a paso":screen==="activity"?"Historial de ejecuciones":"CRM de demostración"}</h1>
             <p>{screen==="demo"?"Cada decisión, evento y escritura se puede inspeccionar.":screen==="activity"?
               "Volvé a cualquier ejecución guardada en tu workspace.":"Registros sintéticos escritos y confirmados por PostgreSQL."}</p>
           </div>
           <span className="modeTag"><span/> Datos ficticios · clasificación determinista</span>
         </div>
         {error&&<div className="error" role="alert"><strong>Atención:</strong> {humanError[error]??error}
-          <button onClick={()=>setError("")} aria-label="Cerrar error">×</button></div>}
-        {!session&&<div className="empty"><span className="spinner"/> Iniciando workspace aislado…</div>}
-        {session&&screen==="demo"&&<>
+          {sessionExpired?<button type="button" className="sessionRecover" disabled={busy}
+            onClick={()=>void renewDemo()}>{busy?"Iniciando…":"Iniciar nueva sesión demo"}</button>:
+            <button onClick={()=>setError("")} aria-label="Cerrar error">×</button>}
+        </div>}
+        {notice&&<div className="sessionNotice" role="status">
+          <span>{notice}</span><button type="button" onClick={()=>setNotice("")} aria-label="Cerrar aviso">×</button>
+        </div>}
+        {!session&&!sessionExpired&&<div className="empty" role="status">
+          {error?<div className="initialRecovery">
+            <p>No pudimos conectar con el entorno de demostración.</p>
+            <button type="button" className="secondary" disabled={busy}
+              onClick={()=>void renewDemo()}>{busy?"Reintentando…":"Reintentar conexión"}</button>
+          </div>:
+          <><span className="spinner"/> Iniciando workspace aislado…</>}
+        </div>}
+        {session&&!sessionExpired&&screen==="demo"&&<>
           <section className="controls slice2Controls" aria-label="Iniciar una automatización sintética">
             <div className="choose"><label htmlFor="fixtureSelect">Lead de demostración</label>
               <select id="fixtureSelect" value={fixtureId} onChange={e=>setFixtureId(e.target.value)}>
                 {fixtures.map(f=><option key={f.id} value={f.id}>{f.name} · {f.priority}</option>)}
               </select><p>{lead?.text}</p>
+              <p className="demoWalkthrough">Elegí un caso, iniciá la ejecución y aprobá la escritura solo si se solicita.</p>
             </div>
             <label className="toggle"><input type="checkbox" checked={failOnce}
               onChange={e=>setFailOnce(e.target.checked)}/>
@@ -301,6 +404,20 @@ export default function Dashboard(){
               onClick={()=>void start()}>{busy?"Procesando…":"▶ Iniciar automatización"}</button>
           </section>
           <Summary run={current} crmCount={crm.length} remaining={session.budgets.runsRemaining}/>
+          <p className="srOnly" role="status" aria-live="polite" aria-atomic="true">
+            {current?("Ejecución "+(statuses[current.status]??current.status)+". "+current.lastEventSeq+" eventos persistidos."): "Ninguna ejecución seleccionada."}
+          </p>
+          {snapshot?.approval?.status==="pending"&&current?.status==="waiting_approval"&&
+            <section className="approvalCard slice2Approval" aria-label="Aprobación pendiente">
+              <div><span className="approvalIcon">!</span></div>
+              <div className="approvalInfo"><h2>Esta acción necesita tu aprobación</h2>
+                <p>Se creará o actualizará <strong>{current.leadId}</strong> en el CRM ficticio.
+                  La decisión se guarda en PostgreSQL y puede revisarse en el historial.</p>
+                <small>Caduca {dateTime(snapshot.approval.expiresAt)} · Sin integraciones externas.</small></div>
+              <div className="approvalActions">
+                <button className="secondary" disabled={busy} onClick={()=>void decide("rejected")}>Rechazar</button>
+                <button className="primary" disabled={busy} onClick={()=>void decide("approved")}>Aprobar escritura</button></div>
+            </section>}
           <div className="slice2Studio">
             <WorkflowCanvas graph={workflow?.graph??null} digest={workflow?.graphDigest}
               events={events} execution={current} selectedNode={selectedNode}
@@ -328,17 +445,6 @@ export default function Dashboard(){
               {current&&<button className="inspectorRunLink" onClick={()=>pickRun(current.id,"activity")}>Abrir historial completo ↗</button>}
             </aside>
           </div>
-          {snapshot?.approval?.status==="pending"&&current?.status==="waiting_approval"&&
-            <section className="approvalCard slice2Approval" aria-label="Aprobación pendiente">
-              <div><span className="approvalIcon">!</span></div>
-              <div className="approvalInfo"><h2>Esta acción necesita tu aprobación</h2>
-                <p>Se creará o actualizará <strong>{current.leadId}</strong> en el CRM ficticio.
-                  La decisión se guarda en PostgreSQL y puede revisarse en el historial.</p>
-                <small>Caduca {dateTime(snapshot.approval.expiresAt)} · Sin integraciones externas.</small></div>
-              <div className="approvalActions">
-                <button className="secondary" disabled={busy} onClick={()=>void decide("rejected")}>Rechazar</button>
-                <button className="primary" disabled={busy} onClick={()=>void decide("approved")}>Aprobar escritura</button></div>
-            </section>}
           <section className="timelinePanel slice2Timeline">
             <div className="panelHead"><div><h2>Timeline de la ejecución</h2>
               <p>Eventos almacenados en PostgreSQL, en orden de secuencia.</p></div>
@@ -347,20 +453,27 @@ export default function Dashboard(){
             <Timeline events={events}/>
           </section>
         </>}
-        {session&&screen==="activity"&&<div className="historyLayout">
+        {session&&!sessionExpired&&screen==="activity"&&<div className="historyLayout">
           <section className="historyPanel" aria-label="Listado de ejecuciones guardadas">
             <div className="historyPanelHead"><div><h2>Ejecuciones guardadas</h2>
               <p>{historyTotal} resultados en tu sesión</p></div>
               <button className="plainButton" onClick={()=>void reloadHistory(true)}
                 disabled={historyLoading}>↻</button></div>
             <div className="historyFilters">
-              <label htmlFor="runSearch">Buscar por lead o ID</label>
+              <label htmlFor="runSearch">Filtrar filas cargadas por lead o ID</label>
               <input id="runSearch" type="search" value={search} onChange={e=>setSearch(e.target.value)}
                 placeholder="Buscar ejecución…" />
               <label htmlFor="runStatus">Estado</label>
               <select id="runStatus" value={filter} onChange={e=>{setFilter(e.target.value);setHistory([]);setHistoryCursor(null)}}>
                 {statusOptions.map(([value,label])=><option key={value} value={value}>{label}</option>)}
               </select>
+              <p className="historySearchHelp" id="historySearchHelp">
+                {visibleHistory.length} coincidencias entre {history.length} ejecuciones cargadas.
+                La búsqueda de texto no consulta otras páginas del servidor.
+              </p>
+              {search&&<button type="button" className="historyClear" onClick={()=>setSearch("")}>
+                Limpiar búsqueda
+              </button>}
             </div>
             <div className="historyItems">
               {visibleHistory.map(item=><button key={item.id} className={"historyRow "+(runId===item.id?"selected":"")}
@@ -370,7 +483,9 @@ export default function Dashboard(){
                 <span className="historyRowFooter"><span>{item.id.slice(0,11)}…</span>
                   <span>{item.retryCount} reintentos</span></span>
               </button>)}
-              {!visibleHistory.length&&!historyLoading&&<div className="historyEmpty">No hay ejecuciones para este filtro.</div>}
+              {!visibleHistory.length&&!historyLoading&&<div className="historyEmpty">
+                {search?"No hay coincidencias en las páginas cargadas. Podés cargar más páginas o limpiar la búsqueda.":"No hay ejecuciones para este filtro."}
+              </div>}
               {historyLoading&&<div className="historyLoading">Consultando historial…</div>}
               {historyCursor&&<button className="historyMore" disabled={historyLoading}
                 onClick={()=>void reloadHistory(false,historyCursor)}>Cargar anteriores ↓</button>}
@@ -393,7 +508,7 @@ export default function Dashboard(){
               <span>Workflow publicado · datos ficticios</span></div>}
           </section>
         </div>}
-        {session&&screen==="crm"&&<section className="timelinePanel slice2CRM">
+        {session&&!sessionExpired&&screen==="crm"&&<section className="timelinePanel slice2CRM">
           <div className="panelHead"><div><h2>Registros confirmados</h2>
             <p>Una fila por lead y workspace. Cada escritura puede rastrearse hasta su ejecución.</p></div>
             <button className="plainButton" onClick={()=>void refresh()}>↻ Actualizar</button></div>
@@ -406,7 +521,7 @@ export default function Dashboard(){
           </tr>)}</tbody></table></div>:<div className="slice2Empty">
             <strong>Aún no hay escrituras confirmadas.</strong>
             <p>Iniciá un lead de prioridad alta y aprobá la acción desde Demo interactiva.</p>
-            <button className="primary" onClick={()=>setScreen("demo")}>Ir a la demo</button>
+            <button className="primary" onClick={()=>navigation("demo")}>Ir a la demo</button>
           </div>}
         </section>}
         <footer>Automation Control Room · Fase 5 / Slice 2 · Demo local · Datos sintéticos · Código abierto</footer>
