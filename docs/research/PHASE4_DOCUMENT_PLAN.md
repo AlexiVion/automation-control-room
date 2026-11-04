@@ -1,7 +1,7 @@
 # Automation Control Room — Plan documental de la Fase 4
 
 **Estado:** Plan de trabajo propuesto; las especificaciones no están todavía aprobadas.  
-**Documento rector:** [`automation-control-room-informe-arquitectura-v1.md`](./automation-control-room-informe-arquitectura-v1.md).
+**Documento rector:** [`automation-control-room-informe-arquitectura-v1.md`](./ARCHITECTURE_RESEARCH_20261103.md).
 
 ## Regla de trabajo
 
@@ -33,7 +33,7 @@ Incluir schemas Zod discriminados para nodos y salidas; ejemplos correctos/incor
 
 ## Gate D — Fiabilidad y pruebas técnicas
 
-**Archivos:** `docs/quality/ACCEPTANCE_TESTS.md`, `docs/adr/0003-pgboss-transactional-queue.md`, `docs/adr/0009-action-ledger-and-idempotency.md`.
+**Archivos:** `docs/quality/ACCEPTANCE_TESTS.md`, `docs/adr/0003-postgres-queue-pg-boss.md`, `docs/adr/0009-action-ledger-idempotency.md`.
 
 Incluir pruebas de PostgreSQL real, compatibilidad Prisma v7+ / `@prisma/adapter-pg` / pg-boss, commit/rollback de creación de run+job, job at-least-once, dos approvals concurrentes, crash/restart durante side effect, `uncertain` y reconciliación.
 
@@ -41,7 +41,7 @@ Incluir pruebas de PostgreSQL real, compatibilidad Prisma v7+ / `@prisma/adapter
 
 ## Gate E — Seguridad
 
-**Archivos:** `docs/security/THREAT_MODEL.md`, `docs/adr/0010-authz-and-secrets.md`.
+**Archivos:** `docs/security/THREAT_MODEL.md`, `docs/adr/0010-workspace-authz-secrets.md`.
 
 Definir límites de confianza, permisos por workspace, claves de cifrado, redacción, webhook firmado, antirreplay, SSRF y egress, prompt injection, demo pública con cuotas, retención de datos y dependencias de terceros.
 
