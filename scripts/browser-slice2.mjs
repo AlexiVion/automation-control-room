@@ -28,6 +28,34 @@ try {
   assert.equal(studioColumns.split(" ").length,1,"Canvas must occupy the full studio width");
   const originalWorkspace=await page.locator(".sideBottom strong").innerText();
   assert.match(originalWorkspace,/^[a-f0-9]{8}$/i);
+  // Contrast assertions on meaningful small text, against white surface.
+  // Full WCAG audit and screen-reader tests remain a separate review.
+  const contrast=await page.evaluate(()=>{
+    const luminance=rgb=>{
+      const rgbValues=(rgb.match(/\\d+(?:\\.\\d+)?/g)||[]).slice(0,3).map(Number);
+      const components=rgbValues.map(v=>{
+        const x=v/255;return x<=0.04045?x/12.92:((x+0.055)/1.055)**2.4;
+      });
+      return components[0]*0.2126+components[1]*0.7152+components[2]*0.0722;
+    };
+    const selectors=[
+      ".slice2Heading p",".slice2Metrics .metricItem span",
+      ".workflowTitle p",".graphNode small",".graphNodeFooter",
+      ".workflowFoot",".slice2Content footer"
+    ];
+    return selectors.map(selector=>{
+      const target=document.querySelector(selector);
+      if(!target)return {selector,ratio:0};
+      const text=luminance(getComputedStyle(target).color);
+      const white=1;
+      return {selector,ratio:(Math.max(text,white)+0.05)/(Math.min(text,white)+0.05)};
+    });
+  });
+  for(const item of contrast){
+    assert.ok(item.ratio>=4.5,
+      "Small readable text contrast must reach 4.5:1 on white: "+item.selector+" "+item.ratio.toFixed(2));
+  }
+  console.log("PASS meaningful small-text contrast >=4.5:1 on white surfaces");
   await page.screenshot({path:path.join(evidence,"00-readable-canvas-desktop.png"),fullPage:true});
   await page.getByRole("button",{name:"Acercar diagrama"}).click();
   const after=await page.locator(".workflowToolbar output").innerText();
