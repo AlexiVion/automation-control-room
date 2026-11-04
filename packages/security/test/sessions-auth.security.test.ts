@@ -23,7 +23,7 @@ describe("guest session and browser security",()=>{
   it("enforces idle 30 minute and absolute 24 hour expiry on reads",()=>{
     expect(validateGuestSession(issued.token,issued.record,t0+29*60*1000)).toBe(true);
     expect(validateGuestSession(issued.token,issued.record,t0+30*60*1000)).toBe(false);
-    const refreshed={...issued.record,lastSeenAtMs:t0+23*3600*1000};
+    const refreshed={...issued.record,lastSeenAtMs:t0+(23*60+45)*60*1000};
     expect(validateGuestSession(issued.token,refreshed,t0+24*3600*1000-1)).toBe(true);
     expect(validateGuestSession(issued.token,refreshed,t0+24*3600*1000)).toBe(false);
   });
