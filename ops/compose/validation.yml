@@ -24,16 +24,19 @@ services:
       postgres:
         condition: service_healthy
     working_dir: /workspace
+    # Mount only the input checkout read-only, NOT the directory where npm
+    # and Prisma need to create node_modules/generated files. Docker Desktop
+    # on Windows cannot create nested volume mountpoints inside a read-only
+    # bind mount. Work on an ephemeral writable container filesystem instead.
     volumes:
-      - ../../:/workspace:ro
-      - gate4f_node_modules:/workspace/node_modules
-      - gate4f_prisma_generated:/workspace/spikes/gate4d/generated
+      - ../../:/source:ro
     environment:
       CI: "true"
       DATABASE_URL: postgresql://acr:acr_test@127.0.0.1:5432/acr_test
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - |
+        cp -a /source/. /workspace/
         npm ci --ignore-scripts --no-audit --no-fund
         npm run typecheck
         npm run test:contracts
@@ -49,6 +52,3 @@ services:
         npm run typecheck:gate4e
         npm run test:gate4e
     restart: "no"
-volumes:
-  gate4f_node_modules:
-  gate4f_prisma_generated:
