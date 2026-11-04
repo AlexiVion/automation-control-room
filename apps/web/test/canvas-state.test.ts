@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { stateOfNode, type CanvasEvent, type GraphRun } from "../components/workflow-canvas";
+import { stateOfNode, type CanvasEvent, type GraphRun } from "../lib/workflow-state";
 
 const entry=(eventType:string,nodeId:string,sequence:number):CanvasEvent=>({
   sequence,eventType,nodeId,message:"synthetic test",createdAt:"2026-11-04T17:00:00.000Z"
