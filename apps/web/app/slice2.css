@@ -73,12 +73,12 @@
 .graphNode.status-cancelled{border-color:#e9a5af;background:#fff7f8}
 .graphNode.status-cancelled .graphStateDot{background:#d4586f}
 .graphNode.status-skipped{opacity:.62;border-style:dashed;box-shadow:none}
-.canvasMinimap{position:absolute;right:18px;bottom:44px;background:#ffffffed;
+.canvasMinimap{position:absolute;left:18px;right:auto;bottom:44px;background:#ffffffed;
   border:1px solid #dfe7f2;border-radius:12px;padding:8px 9px;box-shadow:0 8px 24px #20304d0d;
   z-index:3;pointer-events:none}
 .canvasMinimap span{font-size:8px;letter-spacing:.13em;font-weight:850;color:#92a0b4;display:block}
 .canvasMinimap svg{display:block;margin-top:1px}
-.canvasHintKey{position:absolute;left:16px;bottom:18px;color:#98a6ba;font-size:10px;
+.canvasHintKey{position:absolute;left:222px;bottom:18px;color:#98a6ba;font-size:10px;
   padding:6px 9px;background:#ffffffd9;border-radius:6px}
 .workflowLoading{position:absolute;inset:0;display:grid;place-items:center;color:#7f8fa7;font-size:12px;background:#ffffff9c}
 .workflowFoot{display:flex;align-items:center;gap:16px;padding:14px 18px;background:#fff;
