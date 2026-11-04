@@ -33,6 +33,16 @@ La configuración define PostgreSQL 17 en almacenamiento efímero, **sin puertos
 
 **Estado de evidencia:** el único CI comprobará sintaxis Compose mediante `docker compose config --quiet` además de los tests normales. La ejecución integral del comando Compose no se declara PASS mientras no sea ejecutada por separado. No es un `docker compose` del producto web/API/worker.
 
+## Compatibilidad Docker Desktop en Windows (incidente 2026-11-04)
+
+Una validación local sobre Docker Desktop 28.4/Compose 2.39 encontró que el Compose original de Fase 4 montaba el checkout `/workspace:ro` y además volúmenes hijos en `/workspace/node_modules` y `/workspace/spikes/gate4d/generated`. **Falló antes de iniciar el contenedor verificador** con `mkdirat ... /workspace/node_modules: read-only file system`, pese a que el mismo Compose había pasado en GitHub Actions Linux.
+
+**Corrección:** el checkout se monta solo en `/source:ro`. El shell del verificador realiza `cp -a /source/. /workspace/` y todas las escrituras de npm y Prisma suceden en el directorio `/workspace` propio y escribible del contenedor. No hay volúmenes anidados bajo un bind read-only. Al bajar el proyecto se elimina el overlay efímero del verificador.
+
+La salida del primer script PowerShell impresa después de un `throw` **no es evidencia** de aprobación: cuando se pegan líneas de forma interactiva, PowerShell puede seguir ejecutando los comandos restantes y mostrar un falso encabezado `PHASE 4 PASS`. Repetir la validación dentro de un bloque `& { ... }` y emitir `PASS` únicamente si `docker compose up --exit-code-from verifier` devuelve 0.
+
+La verificación Linux CI del fix y la repetición Windows por parte del usuario son evidencias **separadas**; no atribuir una prueba Windows a GitHub Actions.
+
 ## Arranque del producto futuro: orden obligatorio
 
 1. Configurar TLS, claves, límites de gasto, autorización, backups y egress antes de abrir tráfico.
