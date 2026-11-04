@@ -510,3 +510,8 @@
  .error .sessionRecover{margin-left:0;width:100%}
  .sessionNotice{align-items:flex-start}
 }
+
+.demoWalkthrough{border-left:2px solid #9eadef;padding-left:10px;margin-top:8px!important;
+  color:#586c8b!important;font-size:11px!important;line-height:1.55!important}
+.slice2Shell .heading h1:focus{outline:none}
+.slice2Shell .heading h1:focus-visible{outline:3px solid #8ca8ff;outline-offset:5px}
