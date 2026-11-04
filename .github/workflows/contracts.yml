@@ -170,3 +170,12 @@ jobs:
           npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.56.1
           npx playwright install --with-deps chromium
           ACR_BROWSER_BASE=http://localhost:33000 npm run test:browser
+
+      - name: Upload Slice 2 Chromium evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: slice2-browser-evidence
+          path: /tmp/acr-slice2-evidence/*.png
+          if-no-files-found: ignore
+          retention-days: 7
