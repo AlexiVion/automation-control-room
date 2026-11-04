@@ -50,7 +50,11 @@ export async function resolveSession(token: string | undefined) {
     FROM "DemoWorkspace" AS w
     WHERE s."tokenHash" = ${tokenHash}
       AND s."workspaceId" = w."id"
-      AND s."createdAt" <= CURRENT_TIMESTAMP
+      -- The token hash plus idle/absolute expiration governs validity.
+      -- Never reject solely because createdAt is slightly ahead of the DB clock:
+      -- Windows Docker/Desktop clock corrections can move wall time backwards
+      -- between issuing a new guest session and the very next HTTP request.
+      -- Such a rejected brand-new cookie incorrectly returns SESSION_REQUIRED.
       -- Do NOT require lastSeenAt <= CURRENT_TIMESTAMP: a parallel request can
       -- commit a newer timestamp while this statement awaits the row lock.
       AND s."lastSeenAt" > CURRENT_TIMESTAMP - INTERVAL '30 minutes'
