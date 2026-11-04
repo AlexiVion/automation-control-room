@@ -494,3 +494,19 @@
   .slice2Approval .approvalActions button{flex:1;min-width:0}
   .historySearchHelp{font-size:11px}
 }
+
+/* Session handling: explicit recovery, no silent workspace resets */
+.sessionNotice{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:13px 17px;margin-bottom:18px;border:1px solid #c9d9f3;
+  border-radius:10px;background:#f1f6ff;color:#2c487a;font-size:12px;line-height:1.6}
+.sessionNotice button{font-size:19px;line-height:1;border:0;background:transparent;
+  color:#354f7a;cursor:pointer}
+.error .sessionRecover{margin-left:auto;background:#fff;color:#9b3145;
+  border:1px solid #e6aab7;border-radius:8px;padding:9px 12px;
+  font-size:12px;font-weight:750;line-height:1.4}
+.error .sessionRecover:hover:enabled{background:#fff5f7}
+@media(max-width:660px){
+ .error{flex-wrap:wrap}
+ .error .sessionRecover{margin-left:0;width:100%}
+ .sessionNotice{align-items:flex-start}
+}
