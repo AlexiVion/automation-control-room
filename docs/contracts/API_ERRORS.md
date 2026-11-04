@@ -25,4 +25,6 @@ All failed JSON API responses use:
 
 Every mutating action enforces workspace authorization, expected revision or idempotency key where applicable, and structured validation at the server boundary. Diagnostic `issues` are scrubbed of user-provided secret content.
 
+API DTO schemas: [api.ts](../../packages/contracts/src/api.ts). Shared RunStatus: [status.ts](../../packages/contracts/src/status.ts). They do not implement handlers or authorization.
+
 References: `packages/contracts/src/errors.ts`, [OpenAPI](openapi.yaml), [execution semantics](../architecture/EXECUTION_SEMANTICS.md).

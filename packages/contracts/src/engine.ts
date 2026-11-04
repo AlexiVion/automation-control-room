@@ -1,11 +1,6 @@
 import type { WorkflowDraft } from "./workflow.js";
+import type { RunStatus, StepStatus } from "./status.js";
 
-export type RunStatus =
-  | "queued" | "running" | "waiting_approval" | "retrying"
-  | "needs_review" | "completed" | "failed" | "cancelled";
-export type StepStatus =
-  | "pending" | "ready" | "running" | "waiting_approval"
-  | "retrying" | "succeeded" | "failed" | "skipped" | "cancelled" | "needs_review";
 export type EngineEvent =
   | { type: "START" }
   | { type: "STEP_SUCCEEDED"; nodeId: string; outputDigest: string }

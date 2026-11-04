@@ -19,6 +19,7 @@ npm run contracts:check
 ## Compatibility contract
 
 - `schemaVersion: 1`; new versions require explicit migrations.
+- API DTO schemas (create/replace/publish, run, approvals, demo and AI) are also defined in Zod; OpenAPI describes the network boundary.
 - Workflow nodes: webhook.trigger, ai.classify, condition, compose.template, approval, http.request, demo_crm.upsert, finish.
 - Read-only binding grammar: `$.trigger.<field>[.<field>...]` or `$.steps.<nodeId>.<field>[.<field>...]`. No wildcards, arrays, evaluation or prototype access.
 - Sequential DAG, exclusive conditional branches, no joins/parallel/cycles; effectful nodes require an immediately preceding approval.

@@ -68,7 +68,11 @@ Validation returns `{ok:true,draft}` or `{ok:false,issues:[{code,path,message}]}
 - Unknown `schemaVersion` is rejected. No implicit coercion, reinterpretation or mutation of published versions.
 - The generator at `packages/contracts/scripts/generate-json-schema.ts` emits a structural JSON Schema snapshot; commit the snapshot after generation and require `contracts:check` before claiming 4C fully passed.
 
-## 7. Tests and remaining gates
+## 7. Contratos DTO de API
+
+[api.ts](../../packages/contracts/src/api.ts) exporta schemas Zod para sesión demo, intake, creación/edición/publicación, versiones, estado de ejecución, eventos de inspector, aprobación, planificación IA y CRM ficticio. [status.ts](../../packages/contracts/src/status.ts) centraliza estados compartidos con el Engine Port. La especificación de transporte es [OpenAPI 3.1](openapi.yaml). Estos DTO validan estructura, **no** autentican, autorizan ni garantizan transacciones.
+
+## 8. Tests and remaining gates
 
 Fixtures: [valid and invalid graph examples](../../packages/contracts/fixtures). Test runner: `npm run typecheck` + `npm run test:contracts`, with one GitHub Actions workflow.
 
