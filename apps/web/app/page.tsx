@@ -58,7 +58,14 @@ let initialSession:Promise<Session>|null=null;
 function boot():Promise<Session>{
   if(!initialSession){
     initialSession=getJSON<Session>("/v1/demo/me")
-      .catch(()=>getJSON<Session>("/v1/demo/sessions",{method:"POST"}))
+      .catch(error=>{
+        // Only "no guest session" warrants a new workspace.
+        // A 500/network error must not be masked by creating another session.
+        if(error instanceof Error&&error.message==="SESSION_REQUIRED"){
+          return getJSON<Session>("/v1/demo/sessions",{method:"POST"});
+        }
+        throw error;
+      })
       .catch(e=>{initialSession=null;throw e});
   }
   return initialSession;
