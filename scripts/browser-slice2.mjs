@@ -172,9 +172,11 @@ try {
   console.log("PASS browser Back/Forward restores navigation and run context");
   const crmRows=page.locator(".slice2CRM tbody tr");
   assert.equal(await crmRows.count(),1);
+  // Portfolio proof: capture the confirmed synthetic CRM record BEFORE leaving CRM.
+  await page.screenshot({path:path.join(evidence,"04-confirmed-crm-desktop.png"),fullPage:true});
   await page.getByRole("button",{name:"Ver ejecución ↗"}).first().click();
   await page.getByRole("heading",{name:"Detalle de ejecución"}).waitFor({timeout});
-  await page.screenshot({path:path.join(evidence,"04-crm-to-audit-desktop.png"),fullPage:true});
+  await page.screenshot({path:path.join(evidence,"04b-return-to-audit-desktop.png"),fullPage:true});
   console.log("PASS browser CRM row links to correct persisted execution");
 
   // Separate browser profile; must not see runs or CRM data from the first one.
