@@ -104,6 +104,8 @@ export default function Dashboard(){
   const [selectedNode,setSelectedNode]=useState("source");
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
+  const [notice,setNotice]=useState("");
+  const sessionExpired=error==="SESSION_REQUIRED";
   const [streamConnected,setStreamConnected]=useState(false);
   const [hydrated,setHydrated]=useState(false);
   const [history,setHistory]=useState<HistoryRun[]>([]);
@@ -185,7 +187,18 @@ export default function Dashboard(){
       }
       setCrm(records.items);
       setError("");
-    }catch(e){setError(e instanceof Error?e.message:"REFRESH_FAILED");}
+    }catch(e){
+      const code=e instanceof Error?e.message:"REFRESH_FAILED";
+      if(code==="EXECUTION_NOT_FOUND"&&id===currentRun.current){
+        // Old links are not access grants: the active workspace is authoritative.
+        currentRun.current=null;
+        setRunId(null);
+        setSnapshot(null);
+        setSelectedNode("source");
+        setNotice("La ejecución del enlace pertenece a otra sesión demo o ya venció.");
+        setError("");
+      }else setError(code);
+    }
     finally{refreshLock.current=false;}
   },[]);
   const pickRun=useCallback((id:string,view:Screen="activity")=>{
@@ -215,11 +228,11 @@ export default function Dashboard(){
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
   useEffect(()=>{
-    if(!session)return;
+    if(!session||sessionExpired)return;
     void refresh();
     const timer=setInterval(()=>{void refresh()},2400);
     return()=>clearInterval(timer);
-  },[runId,session?.workspaceId,refresh]);
+  },[runId,session?.workspaceId,refresh,sessionExpired]);
   useEffect(()=>{
     if(!session||!runId)return;
     const stream=new EventSource("/v1/executions/"+runId+"/events");
@@ -229,11 +242,11 @@ export default function Dashboard(){
     return()=>{stream.close();setStreamConnected(false)};
   },[runId,session?.workspaceId,refresh]);
   useEffect(()=>{
-    if(screen!=="activity"||!session)return;
+    if(screen!=="activity"||!session||sessionExpired)return;
     void reloadHistory(true);
     // Explicit refresh preserves previously loaded cursor pages.
     // Run creation and approval also refresh the latest history.
-  },[screen,session?.workspaceId,filter,reloadHistory]);
+  },[screen,session?.workspaceId,filter,reloadHistory,sessionExpired]);
   async function start(){
     if(!session||busy||session.budgets.runsRemaining<=0)return;
     setBusy(true);setError("");
@@ -273,6 +286,39 @@ export default function Dashboard(){
     pushRoute(view,currentRun.current);
     setScreen(view);
   }
+  async function renewDemo(){
+    if(busy)return;
+    setBusy(true);
+    try{
+      // The guest explicitly accepts starting a fresh isolated session.
+      initialSession=null;
+      const fresh=await boot();
+      const [graph,records]=await Promise.all([
+        getJSON<Workflow>("/v1/demo/workflow"),
+        getJSON<{items:Crm[]}>("/v1/demo/crm")
+      ]);
+      currentRun.current=null;
+      setRunId(null);
+      setSnapshot(null);
+      setSelectedNode("source");
+      setHistory([]);
+      setHistoryCursor(null);
+      setHistoryTotal(0);
+      setFixtures(fresh.fixtures);
+      setWorkflow(graph);
+      setCrm(records.items);
+      setSession(fresh);
+      setNotice("Nueva sesión de demostración activa. La sesión anterior no se comparte.");
+      setScreen("demo");
+      setError("");
+      const url=new URL(window.location.href);
+      url.searchParams.set("view","demo");
+      url.searchParams.delete("run");
+      window.history.replaceState(null,"",url.pathname+url.search);
+      void reloadHistory(true);
+    }catch(e){setError(e instanceof Error?e.message:"SESSION_RESTART_FAILED");}
+    finally{setBusy(false);}
+  }
   return <div className="shell slice2Shell">
     <a className="skipLink" href="#main-content">Saltar al contenido</a>
     <aside className="sidebar">
@@ -310,9 +356,15 @@ export default function Dashboard(){
           <span className="modeTag"><span/> Datos ficticios · clasificación determinista</span>
         </div>
         {error&&<div className="error" role="alert"><strong>Atención:</strong> {humanError[error]??error}
-          <button onClick={()=>setError("")} aria-label="Cerrar error">×</button></div>}
-        {!session&&<div className="empty"><span className="spinner"/> Iniciando workspace aislado…</div>}
-        {session&&screen==="demo"&&<>
+          {sessionExpired?<button type="button" className="sessionRecover" disabled={busy}
+            onClick={()=>void renewDemo()}>{busy?"Iniciando…":"Iniciar nueva sesión demo"}</button>:
+            <button onClick={()=>setError("")} aria-label="Cerrar error">×</button>}
+        </div>}
+        {notice&&<div className="sessionNotice" role="status">
+          <span>{notice}</span><button type="button" onClick={()=>setNotice("")} aria-label="Cerrar aviso">×</button>
+        </div>}
+        {!session&&!sessionExpired&&<div className="empty"><span className="spinner"/> Iniciando workspace aislado…</div>}
+        {session&&!sessionExpired&&screen==="demo"&&<>
           <section className="controls slice2Controls" aria-label="Iniciar una automatización sintética">
             <div className="choose"><label htmlFor="fixtureSelect">Lead de demostración</label>
               <select id="fixtureSelect" value={fixtureId} onChange={e=>setFixtureId(e.target.value)}>
@@ -375,7 +427,7 @@ export default function Dashboard(){
             <Timeline events={events}/>
           </section>
         </>}
-        {session&&screen==="activity"&&<div className="historyLayout">
+        {session&&!sessionExpired&&screen==="activity"&&<div className="historyLayout">
           <section className="historyPanel" aria-label="Listado de ejecuciones guardadas">
             <div className="historyPanelHead"><div><h2>Ejecuciones guardadas</h2>
               <p>{historyTotal} resultados en tu sesión</p></div>
@@ -430,7 +482,7 @@ export default function Dashboard(){
               <span>Workflow publicado · datos ficticios</span></div>}
           </section>
         </div>}
-        {session&&screen==="crm"&&<section className="timelinePanel slice2CRM">
+        {session&&!sessionExpired&&screen==="crm"&&<section className="timelinePanel slice2CRM">
           <div className="panelHead"><div><h2>Registros confirmados</h2>
             <p>Una fila por lead y workspace. Cada escritura puede rastrearse hasta su ejecución.</p></div>
             <button className="plainButton" onClick={()=>void refresh()}>↻ Actualizar</button></div>
