@@ -4,7 +4,7 @@
 
 Automation Control Room is an open-source technical project exploring durable business workflow orchestration: how to intake an event, make a deterministic decision, request human approval, execute an idempotent action in a background worker, and inspect the resulting persistent audit trail.
 
-> **Status (November 2026):** Phase 5 / Slice 2 implemented. The runnable local demo, final UX checks and portfolio docs are integrated in [release PR #15](https://github.com/AlexiVion/automation-control-room/pull/15), verified by Windows Docker Desktop and GitHub Actions. The release PR is **not yet merged into `main`**. This is a **synthetic-data demonstration** with a **published, read-only workflow**, not a hosted service, visual editor or live AI agent.
+> **Status (November 2026):** Phase 5 / Slice 2 implemented. The runnable local demo, final UX checks and portfolio docs are integrated in [release PR #15](https://github.com/AlexiVion/automation-control-room/pull/15), verified by Windows Docker Desktop and GitHub Actions. The release candidate is being reviewed for inclusion in the default `main` branch; [PR #15](https://github.com/AlexiVion/automation-control-room/pull/15) tracks the transition. This is a **synthetic-data demonstration** with a **published, read-only workflow**, not a hosted service, visual editor or live AI agent.
 
 **[Integrated release candidate](https://github.com/AlexiVion/automation-control-room/pull/15)** · **[Verified code + Chromium CI](https://github.com/AlexiVion/automation-control-room/actions/runs/41929735160)** · **[Architecture and acceptance details](docs/phase5/SLICE2.md)** · **[Portfolio-first direction](docs/PORTFOLIO_FIRST.md)**
 
@@ -69,11 +69,10 @@ The web UI does **not** execute the work itself. PostgreSQL is the source of tru
 ```powershell
 git clone https://github.com/AlexiVion/automation-control-room.git
 cd automation-control-room
-git switch release/portfolio-github-linkedin-20261104
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows-start-slice2.ps1 -Port 3300
 ```
 
-Until PR #15 is merged, the `git switch` above is required; after that, the published `main` branch will contain the same runnable app. Open **http://localhost:3300**. The script builds one shared image, tags the processes, starts Postgres/API/worker/web, applies versioned migrations and runs HTTP + unit smoke checks. On an existing checkout it preserves the PostgreSQL volume; **do not use `docker compose down -v` unless you intend to delete local demo data**.
+**During PR #15 review only:** before running the last PowerShell line, execute `git switch release/portfolio-github-linkedin-20261104` to use the integrated release branch. **After PR #15 is merged**, the default `main` checkout works directly as shown. Open **http://localhost:3300**. The script builds one shared image, tags the processes, starts Postgres/API/worker/web, applies versioned migrations and runs HTTP + unit smoke checks. On an existing checkout it preserves the PostgreSQL volume; **do not use `docker compose down -v` unless you intend to delete local demo data**.
 
 Expected local markers: `PRODUCT_SLICE1_E2E_PASS` and `SLICE2_WINDOWS_PASS`.
 
