@@ -1,6 +1,6 @@
 # GitHub + LinkedIn portfolio release gate
 
-**Status: NOT YET PUBLISH-READY AS A DEFAULT-BRANCH LINK.** This is a portfolio publication checklist, **not a product/production release gate**.
+**Status: INTEGRATED RELEASE CANDIDATE, NOT YET MERGED TO DEFAULT BRANCH.** This is a portfolio publication checklist, **not a product/production release gate**.
 
 ## Verified at review — November 4, 2026
 
@@ -23,17 +23,26 @@
 See the [source-grounded publication readiness review](READINESS_AUDIT_20261104.md) for an isolated Windows fresh-clone procedure and a precise separation of passed tests from remaining release requirements.
 ## Must do before pointing external recruiters to the GitHub repository
 
-- [ ] **Default branch mismatch:** `main` still has only an old architecture-phase README and says there is no runnable app. Decide and approve a safe stacked-PR merge strategy after final review; **do not merge automatically**.
-- [ ] **Real screenshots:** select and preserve three approved screenshots (finished canvas, scoped history, CRM) from the real product or CI Chromium artifact. No AI-generated UI mockups or stock imagery as execution evidence.
+- [ ] **Default branch mismatch:** created [integrated release PR #15](https://github.com/AlexiVion/automation-control-room/pull/15), from the latest successful UX code head plus eight portfolio documentation files and the committed screenshots. It is a draft targeting `main`; `main` remains the old architecture-only README until merge. Review combined-head CI and obtain final release approval; **do not advertise default branch yet**.
+- [x] **Authentic screenshots preserved on release branch:** completed workflow focus with persisted `crm.confirmed`, reloadable history, and a confirmed synthetic CRM row. All three actual PNGs are committed under [`docs/portfolio/media/`](media/) and [their source commit, artifact and SHA-256 checksums are documented](ASSET_PROVENANCE.md). Owner approval for external LinkedIn presentation is separate.
 - [x] **Clean clone functional acceptance:** a new Windows checkout of the UX branch passed the launcher and real smoke/unit tests with a new Compose project and Postgres volume (see above). Docker layer cache was reused; a no-cache build was not performed. This validates the UX branch, **not yet the future merged default `main`**.
 - [ ] **Trust review (partially complete):** owner-reported npm audit and tracked secret-pattern scan both PASS; full history/entropy/provider-token coverage, dependency licensing/asset origins and repository LICENSE provenance still require explicit review. Local-only dev credentials must never be treated as production-safe.
-- [ ] **Video:** 60–90 second continuous, synthetic-only live demo following [storyboard](DEMO_STORYBOARD.md), or explicitly choose screenshots-only for the first post.
+- [x] **Media scope for first portfolio post:** three verified Chromium screenshots are sufficient; a 60–90 second [video storyboard](DEMO_STORYBOARD.md) is available as an optional follow-up. No video recorded.
 - [ ] **LinkedIn assets:** approve accurate caption/Projects blurb and links only after GitHub's default branch shows the verified code.
 - [ ] **Owner approval:** decide when to merge and publish; no unauthorised deployment or public hosting.
 
+
+## Integrated release PR and CI evidence — 2026-11-04
+
+- [x] [UX head CI #41929735160](https://github.com/AlexiVion/automation-control-room/actions/runs/41929735160) passed after the CRM screenshot fix, with real Compose and Chromium evidence at `12211b158e9618e341ebf2cd2fdecc9775610760`.
+- [x] [Release PR #15](https://github.com/AlexiVion/automation-control-room/pull/15) combines functional code, UX, documentation and preserved screenshots without changing API/worker/database behavior.
+- [x] Three screenshots copied from pinned CI artifact `13370474471` using a one-time workflow and verified SHA-256; the temporary workflow was removed after import. See [asset provenance](ASSET_PROVENANCE.md).
+- [ ] Inspect the **combined release branch** CI conclusion after the documentation/media integration. The last observed run before this update was in progress; do not infer success from the base UX run.
+- [ ] Run a final default-branch smoke after approval and merge; that has not happened yet.
+
 ## Packaging notes
 
-- `docs/portfolio/ARCHITECTURE_AT_A_GLANCE.md` contains a **source-based Mermaid diagram**, so the architecture is inspectable and no image license is required.
+- `docs/portfolio/ARCHITECTURE_AT_A_GLANCE.md` contains a **source-based Mermaid diagram**; all three featured screenshots are original CI-generated PNGs stored in-repo, not stock or AI-generated assets.
 - Link to **stable repository paths and verified CI**, not temporary seven-day GitHub artifact downloads.
 - Distinguish code visibility (public repo) from service accessibility (localhost only).
 - When no hosted demo is available, show the workflow with screenshots/video and clear Docker reproduction instructions.
