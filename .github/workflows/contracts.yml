@@ -153,3 +153,10 @@ jobs:
           trap 'docker compose -f ops/compose/validation.yml down -v --remove-orphans' EXIT
           docker compose -f ops/compose/validation.yml up --abort-on-container-exit --exit-code-from verifier
 
+
+      - name: Build and boot full local product Docker Compose + real smoke
+        shell: bash
+        run: |
+          trap 'docker compose -f ops/compose/product.yml down -v --remove-orphans' EXIT
+          docker compose -f ops/compose/product.yml up --build -d web worker
+          docker compose -f ops/compose/product.yml --profile test run --rm smoke
