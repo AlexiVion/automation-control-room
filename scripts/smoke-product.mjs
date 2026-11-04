@@ -156,7 +156,8 @@ const {value:cursorPage}=await json("/v1/demo/runs?limit=2",{cookie});
 assert.ok(cursorPage.nextCursor);
 await json("/v1/demo/runs?limit=2&status=completed&cursor="+encodeURIComponent(cursorPage.nextCursor),
   {cookie,expected:400});
-const corrupted=cursorPage.nextCursor.slice(0,-1)+(cursorPage.nextCursor.endsWith("a")?"b":"a");
+const [signedBody,signedMac]=cursorPage.nextCursor.split(".");
+const corrupted=signedBody+"."+(signedMac[0]==="a"?"b":"a")+signedMac.slice(1);
 await json("/v1/demo/runs?limit=2&cursor="+encodeURIComponent(corrupted),{cookie,expected:400});
 log("Durable scoped run listing + signed 3-page cursor + filters + published graph");
 
