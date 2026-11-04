@@ -44,3 +44,7 @@ En la demo, el botón «Simular entrada» usa una ruta de sesión que produce un
 La implementación aislada de [security primitives](../../packages/security/README.md) y [spike de persistencia](../../spikes/gate4e/README.md) cubre **componentes**, no handlers Fastify. [SECURITY_CONTROLS.md](SECURITY_CONTROLS.md) describe wire format HMAC, cookies+CSRF, permisos, cuota atómica, secretos AEAD, egress restringido y LLM sin autoridad.
 
 **Lanzamiento público bloqueado** hasta disponer de auth y aislamiento reales en rutas, middleware para webhooks y cookies, mecanismos anti-abuso distribuidos, gestión segura de claves y, si se habilita HTTP externo, pinning de IP+TLS y egress firewall. Un test SSRF sobre arrays de IP no prueba la seguridad de un transporte que haga DNS por segunda vez.
+
+## Resultado de pruebas aisladas — Gate 4E
+
+[CI #41840871229](https://github.com/AlexiVion/automation-control-room/actions/runs/41840871229) **PASS**: 27 pruebas de primitivas de seguridad y 4 pruebas con PostgreSQL real. Ver [SECURITY_EVIDENCE.md](SECURITY_EVIDENCE.md) para detalles y límites. **No** autoriza despliegue ni resuelve SSRF a nivel de socket, ni autenticación/CSRF/aislamiento de endpoints reales.

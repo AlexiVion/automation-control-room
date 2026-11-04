@@ -21,3 +21,7 @@ Block launch on cross-tenant negative test failure.
 - [PostgreSQL scoping and cleanup spike](../../spikes/gate4e/README.md): atomic demo quota, workspace-qualified synthetic CRM, TTL and cascade cleanup.
 
 All are **component-level test candidates**. Real API auth, scoped repositories, key management and integration tests remain unimplemented. ADR status stays proposed.
+
+## Evidencia Gate 4E
+
+[CI #41840871229](https://github.com/AlexiVion/automation-control-room/actions/runs/41840871229) **PASS**: política de workspace, sesión/CSRF, cifrado AEAD y aislamiento/cuota TTL en PostgreSQL 17. Sigue faltando middleware Fastify, KMS real y control de datos de la aplicación; ADR **propuesto**.

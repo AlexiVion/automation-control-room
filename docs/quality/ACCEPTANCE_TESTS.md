@@ -81,3 +81,9 @@ This evidence supports the **queue adapter feasibility**, **not** a fully implem
 | SEC-08 | PostgreSQL impide CRM cross-workspace, reserva de cuota concurrente, sexta run y acceso tras expiración | Cuotas globales/limitación de origen y worker real de cleanup |
 
 La evidencia real se añadirá en [Security Evidence](../security/SECURITY_EVIDENCE.md) después de CI. Todos los requisitos de autorización por workspace, quotas y permisos **deben repetirse en endpoints reales** antes de la demo pública.
+
+## Gate 4E — Evidencia CI de componentes (2026-11-04)
+
+[GitHub Actions #41840871229](https://github.com/AlexiVion/automation-control-room/actions/runs/41840871229): **PASS, 64 tests totales**, incluidos 27 negativos/positivos de primitivas de seguridad y 4 contra PostgreSQL real de guest workspace, cuota atómica, TTL y cleanup. Consultar [evidence ledger](../security/SECURITY_EVIDENCE.md).
+
+**No son PASS todavía los AT-04/05 (endpoint firmado real), AT-16 (HTTP connector seguro real), AT-17/21 (API intersession y SSE reales), AT-22 (middleware CSRF real), AT-23 (cupo global/antiabuso), ni AT-30 (cleanup operativo).** Las pruebas de unidad/DB aislada acreditan una implementación parcial, no los flujos completos del producto.

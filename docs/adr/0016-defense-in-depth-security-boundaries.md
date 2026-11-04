@@ -25,3 +25,7 @@ More explicit boundaries and security testing. MVP HTTP connector must remain un
 Unit and PostgreSQL security tests in Gate 4E provide **component evidence only**. ADR acceptance requires owner review and documented integration/operations tasks. Public release requires verification of real middleware, egress controls, isolation and secrets lifecycle.
 
 Links: [Security Controls](../security/SECURITY_CONTROLS.md) · [Threat Model](../security/THREAT_MODEL.md) · [Issue #6](https://github.com/AlexiVion/automation-control-room/issues/6).
+
+## Evidencia de implementación candidata
+
+[GitHub Actions #41840871229](https://github.com/AlexiVion/automation-control-room/actions/runs/41840871229) **PASS**: controles aislados probados (HMAC, sesiones/CSRF, scopes, AES-GCM, SSRF preflight, IA) y aislamiento/cuotas/cleanup en PostgreSQL real. Los límites están documentados en [SECURITY_EVIDENCE.md](../security/SECURITY_EVIDENCE.md). **ADR propuesto; no constituye certificación ni gate de release.**
