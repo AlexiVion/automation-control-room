@@ -515,3 +515,7 @@
   color:#586c8b!important;font-size:11px!important;line-height:1.55!important}
 .slice2Shell .heading h1:focus{outline:none}
 .slice2Shell .heading h1:focus-visible{outline:3px solid #8ca8ff;outline-offset:5px}
+
+.initialRecovery{display:flex;flex-direction:column;gap:15px;align-items:center;max-width:360px;margin:auto}
+.initialRecovery p{margin:0;color:#52627d;font-size:13px;line-height:1.6}
+.initialRecovery button{min-height:44px}
