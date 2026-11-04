@@ -12,6 +12,13 @@
 - [x] Apache-2.0 LICENSE exists, and the Compose configuration labels its static database/CSRF values as **development-only**, bound to localhost.
 - [x] No tracked `.env`, `.pem`, `.p12`, `.pfx` or private-key file was identified by the **filename-only** tree scan. **This is not a comprehensive secret scan or license compliance audit.**
 
+## Updated evidence and specific blocker — 2026-11-04
+
+- [x] PR #14 UX code CI [#41894674451](https://github.com/AlexiVion/automation-control-room/actions/runs/41894674451) completed successfully at `dc4f0f13...`; the UX branch remains a draft, and Windows clean-clone verification is still pending.
+- [ ] **Verify the provenance of the repository LICENSE.** Its Appendix boilerplate currently includes `Copyright 2026 Sim Studio, Inc.`. This may be valid retained attribution or a copied example; do not change or remove it until the actual origin, copyright and NOTICE obligations are established.
+- [ ] Confirm third-party dependency advisories/licenses. The existing `contracts.yml` runs `npm ci --no-audit` and does not amount to an advisory or license-compliance scan.
+
+See the [source-grounded publication readiness review](READINESS_AUDIT_20261104.md) for an isolated Windows fresh-clone procedure and a precise separation of passed tests from remaining release requirements.
 ## Must do before pointing external recruiters to the GitHub repository
 
 - [ ] **Default branch mismatch:** `main` still has only an old architecture-phase README and says there is no runnable app. Decide and approve a safe stacked-PR merge strategy after final review; **do not merge automatically**.
