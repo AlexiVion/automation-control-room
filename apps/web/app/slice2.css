@@ -389,3 +389,77 @@
   .workflowPanel.focusMode .workflowViewport{display:none}
   .workflowPanel.focusMode .mobileWorkflowNodes{display:grid;grid-column:1;grid-row:2;overflow-y:auto}
 }
+
+/* Between tablet and small desktop, keep focus mode genuinely larger:
+   the live audit becomes a horizontal strip below the graph. */
+@media(min-width:650px) and (max-width:1249px){
+  .workflowPanel.focusMode{
+    grid-template-columns:minmax(0,1fr);
+    grid-template-rows:auto minmax(0,1fr) 126px auto;
+  }
+  .workflowPanel.focusMode .workflowViewport{
+    grid-column:1;
+    grid-row:2;
+  }
+  .workflowPanel.focusMode .workflowFocusInspector{
+    grid-column:1;
+    grid-row:3;
+    display:flex;
+    flex-direction:row;
+    flex-wrap:nowrap;
+    align-items:center;
+    gap:16px;
+    padding:12px 19px;
+    border-left:0;
+    border-top:1px solid #e1e7f0;
+    overflow:auto;
+  }
+  .workflowPanel.focusMode .workflowFocusInspector h3{
+    font-size:18px;
+    margin:0;
+    flex-shrink:0;
+  }
+  .workflowPanel.focusMode .workflowFocusInspector .focusInspectorEyebrow,
+  .workflowPanel.focusMode .workflowFocusInspector .focusInspectorDescription,
+  .workflowPanel.focusMode .workflowFocusInspector .focusInspectorFooter,
+  .workflowPanel.focusMode .workflowFocusInspector .focusInspectorEmpty{
+    display:none;
+  }
+  .workflowPanel.focusMode .focusInspectorStatus{
+    flex-shrink:0;
+  }
+  .workflowPanel.focusMode .focusInspectorFacts{
+    display:flex;
+    gap:15px;
+    align-items:center;
+    margin:0;
+    flex-shrink:0;
+  }
+  .workflowPanel.focusMode .focusInspectorFacts div{
+    display:grid;
+    gap:4px;
+    padding:0;
+    border:0;
+  }
+  .workflowPanel.focusMode .focusInspectorFacts dt{font-size:9px}
+  .workflowPanel.focusMode .focusInspectorFacts dd{
+    text-align:left;
+    font-size:10px;
+    max-width:95px;
+    text-overflow:ellipsis;
+    overflow:hidden;
+    white-space:nowrap;
+  }
+  .workflowPanel.focusMode .focusEventList{
+    flex-shrink:0;
+    max-width:230px;
+    margin:0;
+    padding:0;
+  }
+  .workflowPanel.focusMode .focusEventList li:not(:first-child){display:none}
+  .workflowPanel.focusMode .focusEventList li{padding:7px 9px}
+  .workflowPanel.focusMode .workflowFoot{
+    grid-column:1;
+    grid-row:4;
+  }
+}
