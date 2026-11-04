@@ -25,7 +25,20 @@ try {
   const after=await page.locator(".workflowToolbar output").innerText();
   assert.notEqual(before,after,"Zoom control must change canvas scale");
   await page.getByRole("button",{name:"Ajustar"}).click();
-  console.log("PASS browser desktop workflow canvas renders real nodes/edges and zoom");
+  // Visual geometry guard: the minimap must not cover any node after fit.
+  // This caught a genuine desktop screenshot regression in the initial Slice 2.
+  const minimap=await page.locator(".canvasMinimap").boundingBox();
+  assert.ok(minimap);
+  for(const card of await page.locator(".graphNode").all()){
+    const box=await card.boundingBox();
+    if(!box)continue;
+    const collision=box.x < minimap.x+minimap.width &&
+      box.x+box.width > minimap.x &&
+      box.y < minimap.y+minimap.height &&
+      box.y+box.height > minimap.y;
+    assert.equal(collision,false,"Canvas minimap must not cover published node "+(await card.getAttribute("aria-label")));
+  }
+  console.log("PASS browser desktop workflow canvas renders real nodes/edges, zoom and unobstructed minimap");
 
   await page.getByRole("button",{name:/Iniciar automatización/}).click();
   await page.getByRole("heading",{name:"Esta acción necesita tu aprobación"}).waitFor({timeout});
