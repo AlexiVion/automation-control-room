@@ -4,10 +4,11 @@ import cookie from "@fastify/cookie";
 import { z } from "zod";
 import { verifyMutationOrigin, guestCookie } from "../../../packages/security/src/sessions.js";
 import { SubmitDemoEventSchema, ApprovalDecisionRequestSchema } from "../../../packages/contracts/src/api.js";
-import { db, boss, QUEUE, RESUME, initializeBoss, fromPrisma } from "../../../packages/runtime/src/db.js";
+import { db, boss, QUEUE, RESUME, initializeBoss, fromPrisma, Prisma } from "../../../packages/runtime/src/db.js";
 import { listFixtures, fixture, ensureVersion, VERSION_ID } from "../../../packages/runtime/src/fixture.js";
-import { issueSession, resolveSession, budget } from "../../../packages/runtime/src/session.js";
+import { issueSession, resolveSession, budget, CSRF_KEY } from "../../../packages/runtime/src/session.js";
 import { appendEvent } from "../../../packages/runtime/src/events.js";
+import { decodeHistoryCursor, encodeHistoryCursor } from "../../../packages/runtime/src/history-cursor.js";
 
 const app=Fastify({logger:{level:"info"},bodyLimit:16*1024});
 await app.register(cookie);
@@ -112,6 +113,78 @@ app.post("/v1/demo/events",async(req,reply)=>{
     throw error;
   }
 });
+const RunStatusSchema = z.enum([
+  "queued","running","waiting_approval","retrying",
+  "completed","cancelled","failed","needs_review"
+]);
+const RunListQuerySchema=z.object({
+  limit:z.coerce.number().int().min(1).max(20).default(8),
+  status:RunStatusSchema.optional(),
+  cursor:z.string().min(1).max(512).optional()
+}).strict();
+const terminalStatuses=new Set(["completed","cancelled","failed","needs_review"]);
+
+/**
+ * Durable, session-scoped keyset pagination. CreatedAt + id provides a stable
+ * total order even when several executions share a millisecond. Cursors are
+ * HMAC-signed and bound to workspace + status filter. No new run is created.
+ */
+app.get("/v1/demo/runs",async req=>{
+  const s=await guest(req);
+  const parsed=RunListQuerySchema.safeParse(req.query);
+  if(!parsed.success)throw new HttpError(400,"INVALID_RUN_FILTER");
+  const {limit,status,cursor}=parsed.data;
+  const where:Prisma.DemoExecutionWhereInput={workspaceId:s.workspaceId};
+  if(status)where.status=status;
+  if(cursor){
+    let decoded;
+    try{decoded=decodeHistoryCursor(cursor,s.workspaceId,status??null,CSRF_KEY)}
+    catch{throw new HttpError(400,"INVALID_RUN_CURSOR")}
+    const at=new Date(decoded.at);
+    where.OR=[{createdAt:{lt:at}},{createdAt:at,id:{lt:decoded.id}}];
+  }
+  const [rows,total]=await Promise.all([
+    db.demoExecution.findMany({
+      where,orderBy:[{createdAt:"desc"},{id:"desc"}],take:limit+1,
+      include:{approval:{select:{status:true}}}
+    }),
+    db.demoExecution.count({where:{workspaceId:s.workspaceId,...(status?{status}:{})}})
+  ]);
+  const hasMore=rows.length>limit;
+  const page=rows.slice(0,limit);
+  const ids=page.map(item=>item.id);
+  const retries=ids.length?await db.demoEvent.findMany({
+    where:{executionId:{in:ids},eventType:"step.retry_scheduled"},
+    select:{executionId:true}
+  }):[];
+  const retryCounts=new Map<string,number>();
+  for(const event of retries)retryCounts.set(event.executionId,(retryCounts.get(event.executionId)??0)+1);
+  const last=page.at(-1);
+  return {
+    items:page.map(e=>({
+      id:e.id,leadId:e.leadId,priority:e.priority,category:e.category,
+      status:e.status,createdAt:e.createdAt.toISOString(),
+      updatedAt:e.updatedAt.toISOString(),
+      durationMs:terminalStatuses.has(e.status)?
+        Math.max(0,e.updatedAt.getTime()-e.createdAt.getTime()):null,
+      crmAttempts:e.attempts,
+      retryCount:retryCounts.get(e.id)??0,
+      eventCount:e.lastEventSeq,
+      approvalStatus:e.approval?.status??null,
+      workflowVersionId:e.versionId
+    })),
+    total,
+    nextCursor:hasMore&&last?encodeHistoryCursor({
+      version:1,workspaceId:s.workspaceId,status:status??null,
+      at:last.createdAt.toISOString(),id:last.id
+    },CSRF_KEY):null
+  };
+});
+app.get("/v1/demo/workflow",async req=>{
+  await guest(req);
+  const version=await db.demoVersion.findUniqueOrThrow({where:{id:VERSION_ID}});
+  return {id:version.id,name:version.name,graphDigest:version.graphDigest,graph:version.graph};
+});
 const runParams=z.object({executionId:uuid});
 async function scopedRun(workspaceId:string,id:string) {
   const result=await db.demoExecution.findFirst({where:{id,workspaceId}});
@@ -135,7 +208,11 @@ app.get("/v1/demo/runs/:executionId",async req=>{
   if(!e)throw new HttpError(404,"EXECUTION_NOT_FOUND");
   return {
     execution:{id:e.id,status:e.status,leadId:e.leadId,priority:e.priority,
-      category:e.category,attempts:e.attempts,lastEventSeq:e.lastEventSeq,createdAt:e.createdAt},
+      category:e.category,attempts:e.attempts,crmAttempts:e.attempts,
+      retryCount:e.events.filter(ev=>ev.eventType==="step.retry_scheduled").length,
+      durationMs:terminalStatuses.has(e.status)?
+        Math.max(0,e.updatedAt.getTime()-e.createdAt.getTime()):null,
+      lastEventSeq:e.lastEventSeq,createdAt:e.createdAt,updatedAt:e.updatedAt},
     events:e.events.map(ev=>({sequence:ev.sequence,eventType:ev.eventType,nodeId:ev.nodeId,
       message:ev.message,createdAt:ev.createdAt})),
     approval:e.approval?{id:e.approval.id,status:e.approval.status,

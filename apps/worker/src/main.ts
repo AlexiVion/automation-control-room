@@ -7,7 +7,7 @@ async function classify(executionId:string) {
   await db.$transaction(async tx=>{
     const e=await tx.demoExecution.findUniqueOrThrow({where:{id:executionId}});
     const claimed=await tx.demoExecution.updateMany({
-      where:{id:executionId,status:"queued"},data:{status:"running",attempts:{increment:1}}
+      where:{id:executionId,status:"queued"},data:{status:"running"}
     });
     if(claimed.count!==1)return;
     const lead=fixture(e.leadId as FixtureId);
