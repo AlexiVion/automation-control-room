@@ -1,0 +1,27 @@
+{
+  "name": "automation-control-room",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Phase 4C executable contracts only; no application runtime",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:contracts": "vitest run packages/contracts/test",
+    "test": "npm run test:contracts",
+    "contracts:jsonschema": "tsx packages/contracts/scripts/generate-json-schema.ts",
+    "contracts:check": "tsx packages/contracts/scripts/generate-json-schema.ts --check"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.29",
+    "typescript": "5.9.3",
+    "tsx": "4.23.15",
+    "vitest": "5.1.0",
+    "yaml": "2.9.1"
+  }
+}

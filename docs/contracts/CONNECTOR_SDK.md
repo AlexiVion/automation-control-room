@@ -1,20 +1,53 @@
-# Connector SDK Contract
-**Status:** proposed · **Gate:** 4C
+# ACR — Connector execution port
 
-## Principles
-Built-in TypeScript connectors implement a typed, versioned manifest and a bounded effect interface. The workflow engine depends on the contract, not implementation modules.
+> **Gate 4C · Status:** typed interface candidate; no connector runtime implemented.
+
+Canonical interfaces: [connectors.ts](../../packages/contracts/src/connectors.ts). Engine commands: [engine.ts](../../packages/contracts/src/engine.ts).
+
+## Design goals
+
+Every connector declares its version, effect class, grants, input/output schemas, timeout, idempotency support and network policy. Runtime resolves permissions and credentials. **No connector may grant itself privileges based on model/user text.**
 
 ## Manifest
-`key`, `version`, `effectType` (`read`/`write`), `inputSchema`, `outputSchema`, `requiredGrants`, `timeoutMs`, `idempotencySupport`, `networkPolicy`. Manifest metadata must be deterministic and inspectable in editor and policy engine.
 
-## Execution interface
-`execute(context, typedInput) -> typedOutput` where context provides workspace-scoped secret access, abort signal, logger, idempotency key, HTTP transport with egress controls and trace ID. Connector never receives unrestricted database access.
+```typescript
+type ConnectorManifest = {
+  key: string; version: string;
+  effect: "none" | "read" | "write";
+  requiredGrants: string[];
+  timeoutMs: number;
+  idempotency: "transactional" | "provider_key" | "none";
+  network: "none" | "restricted_egress";
+  inputSchemaId: string; outputSchemaId: string;
+};
+```
 
-## MVP connectors
-`webhook.trigger` (inbound), `ai.classify` (provider adapter), `demo_crm.upsert` (idempotent fixture), `http.request` (allowlist-only), `compose.template` (pure transform). Approval/condition/finish belong to engine semantics, not third-party SDK.
+Example: `demo_crm.upsert@1.0.0`, `effect=write`, `idempotency=transactional`, `network=none`, `requiredGrants=["demo_crm.write"]`.
 
-## Recovery
-Every mutating connector specifies whether retries are safe. Absent verified idempotency/reconciliation, ambiguous outcomes transition to `needs_review`. Exceptions must be typed and logs redacted.
+## Port
 
-## Deferred
-Public plug-in marketplace, sandboxed arbitrary user modules, third-party package execution, OAuth provider catalog.
+```typescript
+interface ConnectorPort<Input,Output> {
+  manifest: ConnectorManifest;
+  validateInput(value: unknown): Input;
+  validateOutput(value: unknown): Output;
+  execute(context: ConnectorContext,input:Input):Promise<ConnectorResult<Output>>;
+}
+```
+
+Context includes scoped workspace/exec/step IDs, stable `operationKey`, cancel signal, **authorized** HTTP client, secret reference resolver and sanitized trace writer. It must not offer arbitrary DB handles or `fetch(url)`.
+
+## Error taxonomy and retry
+
+- `ok: true` is provider/local confirmed success.
+- `kind: definitive` identifies a confirmed failure and whether it is retry-safe.
+- `kind: uncertain` means timeout/ack lost/unknown effect; **never auto retry** absent provider-specific reconciliation/idempotency verified by runtime. Mark ledger uncertain and run `needs_review`.
+- A stable action key spans retries of the same intended effect; published-version semantics and approval digest must match before dispatch.
+
+## Risk controls
+
+`http.request` only accepts server-owned `destinationKey`, not arbitrary model or workflow URL. Runtime must check DNS, IP, redirects, egress and grants at effect time, not just at draft publish. Guest mode denies this connector entirely.
+
+No plugin marketplace or arbitrary user code in v1. First implement `demo_crm.upsert` with PostgreSQL uniqueness and an intentionally failing fixture; only then consider a real connector.
+
+**Still pending:** real workers, permission/secret integrations, connector-specific error reconciliation, network egress implementation and Gate 4D recovery tests.

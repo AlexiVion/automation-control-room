@@ -1,0 +1,39 @@
+name: contracts
+on:
+  pull_request:
+    paths:
+      - 'packages/contracts/**'
+      - 'docs/contracts/**'
+      - 'package.json'
+      - 'tsconfig.json'
+      - '.github/workflows/contracts.yml'
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # Lockfile is pending until a registry-connected environment generates it.
+      # Replace npm install with npm ci after committing package-lock.json.
+      - name: Install pinned direct contract dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Typecheck strict contracts
+        run: npm run typecheck
+      - name: Run structural, graph and OpenAPI contract tests
+        run: npm run test:contracts
+      - name: Generate versioned-schema candidate
+        run: npm run contracts:jsonschema
+      - name: Upload generated schema and lockfile for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate4c-generated-contract-snapshots
+          path: |
+            packages/contracts/schema/workflow-draft.v1.schema.json
+            package-lock.json
+          retention-days: 7

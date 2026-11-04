@@ -49,3 +49,14 @@ Evidence includes command, pinned dependency versions, test environment and resu
 **Nota:** una fixture de clasificación no sustituye el test de proveedor LLM real en el modo operador. Deben existir suites independientes para la interfaz del AI Planner, validación de salida y permisos.
 
 Los escenarios y presupuestos corresponden a propuestas de Gate 4A. No pueden darse por «PASS» hasta tener código, infraestructura y ejecución repetible.
+
+## Gate 4C contract evidence (candidate)
+
+- Structural strict parsing rejects extra keys, malformed node configs and unsupported path expressions.
+- Semantic validator accepts the synthetic lead fixture and rejects cycle, join, missing approval, unsafe binding, non-ancestor reference and disallowed HTTP destinations.
+- Operator HTTP is permitted only under a server-created allowlist and with an immediately preceding approval.
+- AI classification/plan schemas and connector manifest have positive and negative test cases.
+- OpenAPI YAML must parse without duplicate mapping keys, have required operations and resolve all local `$ref` components.
+- `npm run contracts:jsonschema` generates structural JSON Schema; `npm run contracts:check` verifies the committed snapshot.
+
+**Not yet verified:** tests/CI execution, schema snapshot drift, integration with actual API/worker, PostgreSQL/pg-boss rollback and remote effect idempotency. These require proof and must not be reported PASS based on document/code existence.

@@ -11,6 +11,9 @@ Open-source, AI-assisted business workflow orchestration. Build workflows visual
 - [Execution semantics](docs/architecture/EXECUTION_SEMANTICS.md)
 - [Workflow schema](docs/contracts/WORKFLOW_SCHEMA.md)
 - [AI contract](docs/contracts/AI_CONTRACT.md)
+- [Executable contract package](packages/contracts/README.md)
+- [OpenAPI 3.1](docs/contracts/openapi.yaml)
+- [API error taxonomy](docs/contracts/API_ERRORS.md)
 - [Connector contract](docs/contracts/CONNECTOR_SDK.md)
 - [Threat model](docs/security/THREAT_MODEL.md)
 - [Acceptance tests](docs/quality/ACCEPTANCE_TESTS.md)
@@ -32,7 +35,7 @@ Signed lead webhook → typed AI classification (or clearly labeled fixture) →
 Independent of ClickDialog: no shared source, clients, credentials, database, infrastructure, billing or production services. No commercial SaaS or unrestricted outbound HTTP in MVP.
 
 ## Governance
-All specifications and ADRs are **proposed**, not approved. The Phase 4 gate must be completed before production implementation. The repository is not yet a finished product.
+All specifications, contracts and ADRs are **proposed**, not approved. The contract code is not an API or worker. The Phase 4 gate must be completed before production implementation. The repository is not yet a finished product.
 
 ## License
 Apache License 2.0 for original work; consult [LICENSE](LICENSE). Dependencies and borrowed code require independent license review.
