@@ -1,0 +1,84 @@
+name: contracts
+on:
+  pull_request:
+    paths:
+      - 'packages/contracts/**'
+      - 'packages/ux-contracts/**'
+      - 'ops/compose/**'
+      - 'packages/security/**'
+      - 'spikes/gate4e/**'
+      - 'docs/contracts/**'
+      - 'spikes/gate4d/src/**'
+      - 'spikes/gate4d/test/**'
+      - 'spikes/gate4d/prisma/**'
+      - 'spikes/gate4d/tsconfig.json'
+      - 'prisma7.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - '.github/workflows/contracts.yml'
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: acr
+          POSTGRES_PASSWORD: acr_test
+          POSTGRES_DB: acr_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U acr -d acr_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://acr:acr_test@127.0.0.1:5432/acr_test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned direct dependencies for Gate 4D spike
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Typecheck contracts
+        run: npm run typecheck
+      - name: Test contracts
+        run: npm run test:contracts
+      - name: Typecheck security primitives
+        run: npm run typecheck:security
+      - name: Test security primitives
+        run: npm run test:security
+      - name: Typecheck Gate 4F UX projection
+        run: npm run typecheck:ux
+      - name: Test Gate 4F UX projection
+        run: npm run test:ux
+      - name: Validate Docker Compose configuration
+        run: docker compose -f ops/compose/validation.yml config --quiet
+      - name: Check JSON Schema snapshot
+        run: npm run contracts:check
+      - name: Generate Prisma 7 client
+        run: npx prisma generate --config prisma7.config.ts
+      - name: Create ephemeral spike tables
+        run: npx prisma db push --config prisma7.config.ts --accept-data-loss
+      - name: Typecheck transactional spike
+        run: npm run typecheck:gate4d
+      - name: Run real PostgreSQL transactional, duplicate and worker tests
+        run: npm run test:gate4d
+      - name: Typecheck Gate 4E scoped persistence spike
+        run: npm run typecheck:gate4e
+      - name: Test isolated workspaces, atomic quotas and expiry against PostgreSQL
+        run: npm run test:gate4e
+      - name: Verify full one-command Docker Compose validation
+        shell: bash
+        run: |
+          trap 'docker compose -f ops/compose/validation.yml down -v --remove-orphans' EXIT
+          docker compose -f ops/compose/validation.yml up --abort-on-container-exit --exit-code-from verifier

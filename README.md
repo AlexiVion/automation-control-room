@@ -1,29 +1,61 @@
 # Automation Control Room
 
-**Status:** Phase 4 — architecture definition. No runnable application has been implemented yet.
+> **Status: Phase 4 — architecture definition. This repository has no runnable application yet.**
 
-Open-source, AI-assisted business workflow orchestration designed as an independent portfolio project.
+Open-source, AI-assisted business workflow orchestration. Build workflows visually or from natural language, approve sensitive actions, run them through independent workers, and inspect persistent execution events.
 
-## Vision
-
-Build workflows visually or with a natural-language proposal, validate them, require human approvals for sensitive actions, execute with durable workers, and inspect every step and audit event.
+## Start here
+- [Product requirements](docs/product/PRD.md)
+- [Architecture blueprint](docs/architecture/ARCHITECTURE.md)
+- [Domain model](docs/architecture/DOMAIN_MODEL.md)
+- [Execution semantics](docs/architecture/EXECUTION_SEMANTICS.md)
+- [Workflow schema](docs/contracts/WORKFLOW_SCHEMA.md)
+- [AI contract](docs/contracts/AI_CONTRACT.md)
+- [Executable contract package](packages/contracts/README.md)
+- [OpenAPI 3.1](docs/contracts/openapi.yaml)
+- [API error taxonomy](docs/contracts/API_ERRORS.md)
+- [Connector contract](docs/contracts/CONNECTOR_SDK.md)
+- [Threat model](docs/security/THREAT_MODEL.md)
+- [Acceptance tests](docs/quality/ACCEPTANCE_TESTS.md)
+- [Architecture decision records](docs/adr/README.md)
+- [Phase 4 roadmap](docs/ROADMAP.md)
+- [Phase 4 consolidated architecture baseline and test evidence](docs/PHASE4_BASELINE.md)
+- [Gate 4F UX specification](docs/ux/UX_SPEC.md)
+- [Gate 4F wireframes](docs/ux/WIREFRAMES.md)
+- [90-second demo acceptance script](docs/ux/DEMO_ACCEPTANCE_SCRIPT.md)
+- [UX state projection contract](packages/ux-contracts/README.md)
+- [Local validation Compose](ops/compose/validation.yml)
+- [Operations runbook](docs/operations/DEPLOYMENT_RUNBOOK.md)
+- [Release gates](docs/quality/RELEASE_GATES.md)
+- [Full architecture research report (Spanish)](docs/research/ARCHITECTURE_RESEARCH_20261103.md)
+- [Phase 4 documentation plan (Spanish)](docs/research/PHASE4_DOCUMENT_PLAN.md)
+- [Reference repositories](docs/research/REFERENCE_REPOS.md)
+- [Phase 4 gate issues](.github/PHASE4_ISSUES.md)
+- [Gate 4D PostgreSQL + Prisma/pg-boss reliability spike](spikes/gate4d/README.md)
+- [Gate 4E security primitives](packages/security/README.md)
+- [Gate 4E isolated guest persistence tests](spikes/gate4e/README.md)
+- [Security controls and remaining blockers](docs/security/SECURITY_CONTROLS.md)
+- [Contributing](CONTRIBUTING.md)
 
 ## Architectural direction (proposed)
+TypeScript modular monolith with three processes: Next.js web, Fastify API, and independent worker. PostgreSQL is the source of truth, pg-boss is the proposed queue (Prisma 7/PostgreSQL 17 atomic enqueue verified in isolated Gate 4D tests, final architectural acceptance pending), and a custom deterministic workflow engine executes typed nodes. React Flow presents the graph; an LLM may propose schema-validated drafts but cannot execute arbitrary actions.
 
-- TypeScript modular monolith with three deployable processes: **web**, **API**, **worker**.
-- Next.js, React Flow, Fastify, Zod, PostgreSQL, Prisma, pg-boss.
-- Own deterministic workflow engine and typed connector interfaces.
-- AI proposes structured drafts; policy-controlled worker code executes effects.
-- A signed-lead-webhook demo with AI classification, human approval, idempotent CRM upsert and execution history.
+## Demo vertical slice
+Signed lead webhook → typed AI classification (or clearly labeled fixture) → human approval → idempotent demo CRM upsert → events, failure injection, recovery and execution inspector.
 
-## Boundaries
+## Project boundary
+Independent of ClickDialog: no shared source, clients, credentials, database, infrastructure, billing or production services. No commercial SaaS or unrestricted outbound HTTP in MVP.
 
-Independent from ClickDialog infrastructure, customer information, private source and credentials. No payments or commercial multi-tenancy in the first version. Architecture decisions and executable contracts are subject to Phase 4 review.
-
-## Development
-
-Documentation will be prepared in a dedicated pull request. Implementation begins after agreeing on the Phase 4 contracts, acceptance criteria and security controls.
+## Governance
+All specifications, contracts and ADRs are **proposed**, not approved. The contract code is not an API or worker. The Phase 4 gate must be completed before production implementation. The repository is not yet a finished product.
 
 ## License
+Apache License 2.0 for original work; consult [LICENSE](LICENSE). Dependencies and borrowed code require independent license review.
 
-Apache-2.0 for original project contributions (see LICENSE once added).
+## Gate 4F: local validation (not a runnable product)
+
+```sh
+docker compose -f ops/compose/validation.yml up --abort-on-container-exit --exit-code-from verifier
+```
+
+The Compose file runs **tests only** against an isolated PostgreSQL 17; it does not create a Next.js web UI, Fastify API or product worker. Clean up with `docker compose -f ops/compose/validation.yml down -v`. See [Runbook](docs/operations/DEPLOYMENT_RUNBOOK.md) and [Release Gates](docs/quality/RELEASE_GATES.md).

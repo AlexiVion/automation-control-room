@@ -1,0 +1,485 @@
+openapi: 3.1.1
+info:
+  title: Automation Control Room — v1 Control API
+  version: 0.1.0-proposed
+  description: |
+    Gate 4C design contract, NOT a deployed service. Auth is scoped in server middleware.
+    Canonical workflow node validation is Zod in packages/contracts; a JSON Schema snapshot
+    is generated from Zod. OpenAPI documents wire operations, not DAG semantics.
+servers:
+  - url: /v1
+tags:
+  - name: Demo
+  - name: Workflows
+  - name: Executions
+  - name: Approvals
+  - name: Webhooks
+  - name: AI
+paths:
+  /demo/sessions:
+    post:
+      tags: [Demo]
+      operationId: createDemoSession
+      security: []
+      summary: Create isolated ephemeral demo session (sets HttpOnly cookie)
+      responses:
+        '201':
+          description: Session created; cookie is set by server
+          headers:
+            Set-Cookie:
+              description: Opaque, HttpOnly, Secure and SameSite=Lax guest token
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoSession' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /demo/events:
+    post:
+      tags: [Demo]
+      operationId: submitDemoEvent
+      security: [{ demoCookie: [] }]
+      summary: Simulated signed-webhook-equivalent domain event; not an actual HMAC webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [fixtureId]
+              properties:
+                fixtureId: { type: string, enum: [lead_demo_001, lead_demo_002, lead_demo_003] }
+                simulateTransientFailureOnce: { type: boolean, default: false }
+      responses:
+        '202':
+          description: Durable execution intake accepted; not proof of successful completion
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExecutionAccepted' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /demo/crm:
+    get:
+      tags: [Demo]
+      operationId: listDemoCrmRecords
+      security: [{ demoCookie: [] }]
+      summary: Isolated synthetic CRM data for current guest session
+      responses:
+        '200':
+          description: Records from current workspace only
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/DemoCrmRecord' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /workflows:
+    post:
+      tags: [Workflows]
+      operationId: createWorkflow
+      security: [{ demoCookie: [] }, { operatorBearer: [] }]
+      summary: Create a workflow and initial editable draft scoped to workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name, draft]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 100 }
+                draft: { $ref: '#/components/schemas/WorkflowDraft' }
+      responses:
+        '201':
+          description: Workflow created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkflowResource' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /workflows/{workflowId}/draft:
+    parameters:
+      - $ref: '#/components/parameters/WorkflowId'
+    get:
+      tags: [Workflows]
+      operationId: getWorkflowDraft
+      security: [{ demoCookie: [] }, { operatorBearer: [] }]
+      responses:
+        '200':
+          description: Current mutable draft
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkflowResource' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Workflows]
+      operationId: replaceWorkflowDraft
+      security: [{ demoCookie: [] }, { operatorBearer: [] }]
+      summary: Replace draft using optimistic revision; server checks scope and structure
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedRevision, draft]
+              properties:
+                expectedRevision: { type: integer, minimum: 0 }
+                draft: { $ref: '#/components/schemas/WorkflowDraft' }
+      responses:
+        '200':
+          description: Updated draft
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkflowResource' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /workflows/{workflowId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/WorkflowId'
+    post:
+      tags: [Workflows]
+      operationId: publishWorkflow
+      security: [{ demoCookie: [] }, { operatorBearer: [] }]
+      summary: Validate graph + policy, publish immutable version atomically
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedRevision]
+              properties:
+                expectedRevision: { type: integer, minimum: 0 }
+      responses:
+        '201':
+          description: Immutable version published
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkflowVersion' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /webhooks/{sourceKey}:
+    parameters:
+      - name: sourceKey
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [Webhooks]
+      operationId: receiveSignedWebhook
+      summary: Operator-configured inbound HMAC webhook; independent of demo cookie
+      security: [{ webhookSignature: [] }]
+      parameters:
+        - { name: X-ACR-Timestamp, in: header, required: true, schema: { type: string } }
+        - { name: X-ACR-Event-Id, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '202':
+          description: Idempotently accepted (duplicate IDs return existing execution)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExecutionAccepted' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /executions/{executionId}:
+    parameters:
+      - $ref: '#/components/parameters/ExecutionId'
+    get:
+      tags: [Executions]
+      operationId: getExecution
+      security: [{ demoCookie: [] }, { operatorBearer: [] }]
+      responses:
+        '200':
+          description: Current persisted execution snapshot
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Execution' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /executions/{executionId}/events:
+    parameters:
+      - $ref: '#/components/parameters/ExecutionId'
+    get:
+      tags: [Executions]
+      operationId: streamExecutionEvents
+      security: [{ demoCookie: [] }, { operatorBearer: [] }]
+      summary: SSE stream of persisted redacted events; Last-Event-ID resumes cursor
+      parameters:
+        - name: Last-Event-ID
+          in: header
+          required: false
+          schema: { type: string, pattern: '^[0-9]+$' }
+      responses:
+        '200':
+          description: text/event-stream with id equal to monotonic execution sequence
+          content:
+            text/event-stream:
+              schema: { type: string, description: 'SSE frames containing JSON ExecutionEvent data' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /executions/{executionId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/ExecutionId'
+    post:
+      tags: [Executions]
+      operationId: requestExecutionCancellation
+      security: [{ demoCookie: [] }, { operatorBearer: [] }]
+      summary: Request cancellation at safe processing boundary; does not undo effects
+      responses:
+        '202':
+          description: Cancellation requested; final status may be later
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Execution' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /approvals/{approvalId}/decision:
+    parameters:
+      - name: approvalId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [Approvals]
+      operationId: decideApproval
+      security: [{ demoCookie: [] }, { operatorBearer: [] }]
+      summary: One-time authorized decision with payload digest compare-and-swap
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision, expectedPayloadDigest]
+              properties:
+                decision: { type: string, enum: [approved, rejected] }
+                expectedPayloadDigest: { type: string, pattern: '^[a-f0-9]{64}$' }
+      responses:
+        '200':
+          description: Persisted approval decision (resume is queued if approved)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApprovalDecision' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /ai/workflows:plan:
+    post:
+      tags: [AI]
+      operationId: planWorkflowFromText
+      security: [{ operatorBearer: [] }]
+      summary: Propose a draft; never publish or execute actions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [intent]
+              properties:
+                intent: { type: string, minLength: 3, maxLength: 2000 }
+      responses:
+        '200':
+          description: Schema-valid draft proposal; publish always requires separate validation
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [mode, draft, explanation, warnings]
+                properties:
+                  mode: { type: string, enum: [provider_live] }
+                  draft: { $ref: '#/components/schemas/WorkflowDraft' }
+                  explanation: { type: string }
+                  warnings: { type: array, items: { type: string } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+components:
+  securitySchemes:
+    demoCookie:
+      type: apiKey
+      in: cookie
+      name: acr_demo_session
+      description: Opaque guest-scoped session; CSRF/Origin controls enforced for mutations
+    operatorBearer:
+      type: http
+      scheme: bearer
+      description: Provisional operator principal; implementation details resolved at security Gate 4E
+    webhookSignature:
+      type: apiKey
+      in: header
+      name: X-ACR-Signature
+      description: HMAC SHA256 over raw body + timestamp + event ID; exact canonicalization to be specified at Gate 4E
+  parameters:
+    WorkflowId: { name: workflowId, in: path, required: true, schema: { type: string, format: uuid } }
+    ExecutionId: { name: executionId, in: path, required: true, schema: { type: string, format: uuid } }
+  schemas:
+    ContractIssue:
+      type: object
+      additionalProperties: false
+      required: [code, path, message]
+      properties:
+        code: { type: string, description: 'Stable typed contract error code' }
+        path: { type: string }
+        message: { type: string }
+    ApiError:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message, traceId, retryable]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            traceId: { type: string }
+            retryable: { type: boolean }
+            issues: { type: array, items: { $ref: '#/components/schemas/ContractIssue' } }
+    DemoSession:
+      type: object
+      additionalProperties: false
+      required: [workspaceId, expiresAt, budgets]
+      properties:
+        workspaceId: { type: string, format: uuid }
+        expiresAt: { type: string, format: date-time }
+        budgets:
+          type: object
+          additionalProperties: false
+          required: [runsRemaining, maxNodes, maxEdges]
+          properties:
+            runsRemaining: { type: integer }
+            maxNodes: { type: integer }
+            maxEdges: { type: integer }
+    WorkflowDraft:
+      type: object
+      additionalProperties: false
+      description: |
+        Structural wire shape. Canonical strict discriminated node definitions live
+        in packages/contracts/src/workflow.ts. Server must ALSO run graph semantic validation.
+      required: [schemaVersion, trigger, nodes, edges]
+      properties:
+        schemaVersion: { const: 1, type: integer }
+        trigger:
+          type: object
+          additionalProperties: false
+          required: [nodeId]
+          properties: { nodeId: { type: string } }
+        nodes:
+          type: array
+          minItems: 2
+          maxItems: 64
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, type, config]
+            properties:
+              id: { type: string }
+              type:
+                type: string
+                enum: [webhook.trigger, ai.classify, condition, compose.template, approval, http.request, demo_crm.upsert, finish]
+              config: { type: object }
+        edges:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, source, target]
+            properties:
+              id: { type: string }
+              source: { type: string }
+              target: { type: string }
+              branch: { type: string, enum: ['true', 'false'] }
+    WorkflowResource:
+      type: object
+      additionalProperties: false
+      required: [workflowId, draftRevision, draft]
+      properties:
+        workflowId: { type: string, format: uuid }
+        draftRevision: { type: integer, minimum: 0 }
+        draft: { $ref: '#/components/schemas/WorkflowDraft' }
+        publishedVersionId: { type: string, format: uuid }
+    WorkflowVersion:
+      type: object
+      additionalProperties: false
+      required: [workflowVersionId, workflowId, versionNo, graphDigest, publishedAt]
+      properties:
+        workflowVersionId: { type: string, format: uuid }
+        workflowId: { type: string, format: uuid }
+        versionNo: { type: integer, minimum: 1 }
+        graphDigest: { type: string, pattern: '^[a-f0-9]{64}$' }
+        publishedAt: { type: string, format: date-time }
+    ExecutionAccepted:
+      type: object
+      additionalProperties: false
+      required: [executionId, status, duplicate]
+      properties:
+        executionId: { type: string, format: uuid }
+        status: { type: string, enum: [queued, running, waiting_approval, retrying, needs_review, completed, failed, cancelled] }
+        duplicate: { type: boolean }
+    Execution:
+      type: object
+      additionalProperties: false
+      required: [executionId, workflowVersionId, status, revision, lastEventSeq]
+      properties:
+        executionId: { type: string, format: uuid }
+        workflowVersionId: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [queued, running, waiting_approval, retrying, needs_review, completed, failed, cancelled]
+        revision: { type: integer, minimum: 0 }
+        lastEventSeq: { type: integer, minimum: 0 }
+    ApprovalDecision:
+      type: object
+      additionalProperties: false
+      required: [approvalId, status, decidedAt]
+      properties:
+        approvalId: { type: string, format: uuid }
+        status: { type: string, enum: [approved, rejected] }
+        decidedAt: { type: string, format: date-time }
+    DemoCrmRecord:
+      type: object
+      additionalProperties: false
+      required: [id, externalKey, category, priority]
+      properties:
+        id: { type: string, format: uuid }
+        externalKey: { type: string }
+        category: { type: string }
+        priority: { type: string }
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } }
+    Forbidden:
+      description: Identity cannot access this workspace/effect
+      content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } }
+    NotFound:
+      description: Scoped resource not found
+      content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } }
+    Conflict:
+      description: Expected revision, approval state, quota or idempotency conflict
+      content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } }
+    Unprocessable:
+      description: Structural/publish semantic contract violation
+      content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } }
+    RateLimited:
+      description: Quota exceeded
+      headers:
+        Retry-After: { schema: { type: integer, minimum: 1 } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/ApiError' } } }
