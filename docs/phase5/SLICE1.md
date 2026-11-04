@@ -6,13 +6,31 @@ This slice is the first actual product implementation following the [Phase 4 bas
 
 ## Run on Windows PowerShell with Docker Desktop
 
-From the root of a checkout of branch `feat/phase5-slice1-live-demo-20261104`:
+From the root of a checkout of branch `feat/phase5-slice1-live-demo-20261104`. On **Windows Docker Desktop**, build the shared Dockerfile just **once**, tag it for all processes, and start with `--no-build`; this avoids four concurrent BuildKit image exports in the same Windows temp directory:
 
 ```powershell
-docker compose -f ops/compose/product.yml up --build -d
-docker compose -f ops/compose/product.yml --profile test run --rm smoke
+$project = "acrphase5local"
+$compose = "ops/compose/product.yml"
+docker build -f ops/compose/Dockerfile.product -t acrphase5local-image:dev .
+if ($LASTEXITCODE -ne 0) { throw "PRODUCT_IMAGE_BUILD_FAILED" }
+foreach ($service in @("migrate","api","worker","web")) {
+    docker image tag acrphase5local-image:dev "${project}-${service}:latest"
+    if ($LASTEXITCODE -ne 0) { throw "IMAGE_TAG_FAILED: $service" }
+}
+docker compose -p $project -f $compose up -d --no-build --wait --wait-timeout 180 web worker
+if ($LASTEXITCODE -ne 0) { throw "PRODUCT_START_FAILED" }
+docker compose -p $project -f $compose exec -T `
+    -e ACR_API_BASE=http://api:3100 `
+    -e ACR_WEB_BASE=http://web:3000 `
+    -e ACR_ORIGIN=http://localhost:3000 `
+    api npm run test:product
+if ($LASTEXITCODE -ne 0) { throw "PRODUCT_E2E_FAILED" }
 Start-Process "http://localhost:3000"
 ```
+
+If a previous `docker compose up --build` attempt already showed `naming to docker.io/library/acrphase5local-{service}:latest` for **migrate, api, worker, web** but ended in a Windows temp file rename lock, do **not** rebuild: skip directly to the `docker compose ... up -d --no-build` command above and run the same `exec ... test:product` smoke. Check the named images with `docker image inspect acrphase5local-web:latest acrphase5local-api:latest acrphase5local-worker:latest acrphase5local-migrate:latest`.
+
+The Windows lock signature seen on 2026-11-04 was `rename ...compose-build-metadataFile...: The process cannot access the file because it is being used by another process`. This is a **Docker Desktop/Windows build finalization failure**, not a Next.js/API application exception. Multiple service image exports amplify file operations; using one explicit `docker build` avoids the Compose multi-service export stage. If `docker build` itself is still blocked, inspect Windows Defender/AV file handles and Docker Desktop, **without** disabling security protections or deleting volumes indiscriminately.
 
 When finished (retain the local test DB across routine restarts):
 
