@@ -1,0 +1,62 @@
+name: Preserve verified portfolio screenshots
+
+on:
+  push:
+    branches:
+      - release/portfolio-github-linkedin-20261104
+    paths:
+      - .github/workflows/portfolio-screenshots.yml
+
+permissions:
+  contents: read
+
+jobs:
+  preserve:
+    if: github.repository == 'AlexiVion/automation-control-room'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Check out the release candidate
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Verify the exact source artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          artifact_id=13370474471
+          expected_sha=12211b158e9618e341ebf2cd2fdecc9775610760
+          actual_sha="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}" --jq '.workflow_run.head_sha')"
+          test "$actual_sha" = "$expected_sha"
+          curl --fail --silent --show-error --location --retry 3 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" \
+            --output "${RUNNER_TEMP}/portfolio-evidence.zip"
+          unzip -t "${RUNNER_TEMP}/portfolio-evidence.zip"
+          mkdir -p "${RUNNER_TEMP}/portfolio-evidence"
+          unzip -q "${RUNNER_TEMP}/portfolio-evidence.zip" -d "${RUNNER_TEMP}/portfolio-evidence"
+          mkdir -p docs/portfolio/media
+          for name in 02b-focus-mode-audit-desktop.png 03-reloadable-history-desktop.png 04-confirmed-crm-desktop.png; do
+            test -s "${RUNNER_TEMP}/portfolio-evidence/${name}"
+            cp "${RUNNER_TEMP}/portfolio-evidence/${name}" "docs/portfolio/media/${name}"
+            file "docs/portfolio/media/${name}" | grep -q 'PNG image data'
+          done
+          sha256sum docs/portfolio/media/*.png
+          test "$(find docs/portfolio/media -maxdepth 1 -type f -name '*.png' | wc -l)" -eq 3
+      - name: Commit authentic reviewed screenshots once
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- docs/portfolio/media/*.png
+          if git diff --cached --quiet; then
+            echo 'SCREENS_ALREADY_PRESENT'
+            exit 0
+          fi
+          git commit -m 'docs(portfolio): preserve three real Chromium CI screenshots'
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo 'PORTFOLIO_SCREENSHOTS_COMMITTED'
