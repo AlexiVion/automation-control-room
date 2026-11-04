@@ -24,6 +24,9 @@ Open-source, AI-assisted business workflow orchestration. Build workflows visual
 - [Reference repositories](docs/research/REFERENCE_REPOS.md)
 - [Phase 4 gate issues](.github/PHASE4_ISSUES.md)
 - [Gate 4D PostgreSQL + Prisma/pg-boss reliability spike](spikes/gate4d/README.md)
+- [Gate 4E security primitives](packages/security/README.md)
+- [Gate 4E isolated guest persistence tests](spikes/gate4e/README.md)
+- [Security controls and remaining blockers](docs/security/SECURITY_CONTROLS.md)
 - [Contributing](CONTRIBUTING.md)
 
 ## Architectural direction (proposed)

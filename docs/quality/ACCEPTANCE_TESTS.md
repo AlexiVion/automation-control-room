@@ -66,3 +66,18 @@ Los escenarios y presupuestos corresponden a propuestas de Gate 4A. No pueden da
 [CI PASS](https://github.com/AlexiVion/automation-control-room/actions/runs/41836485254): **9 tests against PostgreSQL 17** using pinned Prisma 7.10.1 and pg-boss 12.38.0. Validated: atomic enqueue/rollback, same-source dedup, concurrent approval, atomic approval resume/rollback, backlog recovery, SIGKILL of claimed worker followed by local CRM upsert without duplication, and explicit `needs_review` for an uncertain external result.
 
 This evidence supports the **queue adapter feasibility**, **not** a fully implemented product. Full workflow engine, real webhook-HMAC ingress, waiting approval UX, external HTTP connector, provider reconciliation, SSE, guest isolation and product-level acceptance cases remain unimplemented. Neither exactly-once delivery nor remote side-effect exactly-once is claimed.
+
+## Gate 4E — Security negative-case proof targets
+
+| ID | Verificación aislada | No demuestra |
+|---|---|---|
+| SEC-01 | HMAC raw body correcta; rechazo tamper, secret incorrecto y timestamp vencido/futuro | Endpoint Fastify + replay DB integral |
+| SEC-02 | Token guest hashed, expiración idle/absoluta, cookie HttpOnly/Secure | Navegador/sesión desplegada |
+| SEC-03 | Rechazo de CSRF y Origin incorrecto | Endpoint protegido/real cookies |
+| SEC-04 | Denegación cross-workspace y de grants operador | Aplicación Prisma real de recursos del producto |
+| SEC-05 | AES-256-GCM AAD por workspace, tamper, clave incorrecta y rewrap | KMS y gestión de claves prod |
+| SEC-06 | Bloqueo de host/IP privados, metadata, IPv6 y redirects | Socket pinning + TLS SNI + firewall egress |
+| SEC-07 | LLM no puede concederse grants, aprobar ni invocar HTTP invitado | Robustez semántica universal ante prompt injection |
+| SEC-08 | PostgreSQL impide CRM cross-workspace, reserva de cuota concurrente, sexta run y acceso tras expiración | Cuotas globales/limitación de origen y worker real de cleanup |
+
+La evidencia real se añadirá en [Security Evidence](../security/SECURITY_EVIDENCE.md) después de CI. Todos los requisitos de autorización por workspace, quotas y permisos **deben repetirse en endpoints reales** antes de la demo pública.

@@ -40,3 +40,33 @@ model SpikeCrmRecord {
   externalKey  String   @unique
   executionId  String   @db.Uuid
 }
+
+model SpikeWorkspace {
+  id          String   @id @default(uuid()) @db.Uuid
+  mode        String
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+  runsStarted Int      @default(0)
+  activeRuns  Int      @default(0)
+  sessions    SpikeGuestSession[]
+  crmRecords  SpikeScopedCrmRecord[]
+}
+
+model SpikeGuestSession {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @unique @db.Uuid
+  tokenHash   String   @unique
+  createdAt   DateTime
+  lastSeenAt  DateTime
+  expiresAt   DateTime
+  workspace   SpikeWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model SpikeScopedCrmRecord {
+  id          String @id @default(uuid()) @db.Uuid
+  workspaceId String @db.Uuid
+  externalKey String
+  value       String
+  workspace   SpikeWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  @@unique([workspaceId, externalKey])
+}

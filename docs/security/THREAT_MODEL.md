@@ -38,3 +38,9 @@ Este apartado deriva del [PRD §4](../product/PRD.md) y del [ADR 0014](../adr/00
 Los números son presupuestos iniciales de producto. Los límites globales deben persistir/aplicarse en servidor y supervisarse; un navegador malicioso puede borrar cookies, de modo que el límite por sesión **no basta** contra abuso sistemático. Antes del lanzamiento público se define un mecanismo adicional por origen y cupo de infraestructura sin utilizar direcciones IP como clave de autorización.
 
 En la demo, el botón «Simular entrada» usa una ruta de sesión que produce un evento `demo.webhook` y comparte el caso de uso de creación de execution con el endpoint operador firmado. Nunca se considera que una simulación pruebe criptográficamente la recepción HMAC.
+
+## Gate 4E — controles implementados como prototipo y verificación pendiente
+
+La implementación aislada de [security primitives](../../packages/security/README.md) y [spike de persistencia](../../spikes/gate4e/README.md) cubre **componentes**, no handlers Fastify. [SECURITY_CONTROLS.md](SECURITY_CONTROLS.md) describe wire format HMAC, cookies+CSRF, permisos, cuota atómica, secretos AEAD, egress restringido y LLM sin autoridad.
+
+**Lanzamiento público bloqueado** hasta disponer de auth y aislamiento reales en rutas, middleware para webhooks y cookies, mecanismos anti-abuso distribuidos, gestión segura de claves y, si se habilita HTTP externo, pinning de IP+TLS y egress firewall. Un test SSRF sobre arrays de IP no prueba la seguridad de un transporte que haga DNS por segunda vez.

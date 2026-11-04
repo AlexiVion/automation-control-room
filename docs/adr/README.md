@@ -17,6 +17,7 @@ All ADRs are currently **proposed**, not final. Every accepted decision must inc
 - 0013 Independent deployment from ClickDialog
 - 0014 Anonymous demo sandbox, LLM modes and quota budgets
 - 0015 Strict typed contracts, Zod v4 and OpenAPI 3.1
+- 0016 Defense in depth and server-owned security trust boundaries
 
 ## Workflow
 Status transitions: proposed → accepted or rejected → superseded. Avoid silently editing accepted ADRs; create a superseding record when implementation evidence changes the decision.

@@ -14,7 +14,11 @@
     "contracts:jsonschema": "tsx packages/contracts/scripts/generate-json-schema.ts",
     "contracts:check": "tsx packages/contracts/scripts/generate-json-schema.ts --check",
     "typecheck:gate4d": "tsc --noEmit -p spikes/gate4d/tsconfig.json",
-    "test:gate4d": "vitest run spikes/gate4d/test --maxWorkers=1"
+    "test:gate4d": "vitest run spikes/gate4d/test --maxWorkers=1",
+    "typecheck:security": "tsc --noEmit -p packages/security/tsconfig.json",
+    "test:security": "vitest run packages/security/test --maxWorkers=1",
+    "typecheck:gate4e": "tsc --noEmit -p spikes/gate4e/tsconfig.json",
+    "test:gate4e": "vitest run spikes/gate4e/test --maxWorkers=1"
   },
   "dependencies": {
     "zod": "4.6.7",

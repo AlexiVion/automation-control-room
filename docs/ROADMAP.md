@@ -6,7 +6,7 @@
 - **4B Domain** — [Detailed candidate domain](architecture/DOMAIN_MODEL.md) and [execution semantics](architecture/EXECUTION_SEMANTICS.md) **written; owner review still pending**. Approve entity constraints, transitions, event sequence, immutable versions and ActionLedger.
 - **4C Contracts** — [TypeScript Zod/graph validator](../packages/contracts/src/workflow.ts), [OpenAPI](contracts/openapi.yaml), [typed ports and API DTO](../packages/contracts/src/index.ts), [fixtures/tests](../packages/contracts/test), and [JSON Schema generator](../packages/contracts/scripts/generate-json-schema.ts) **prepared as candidates**; CI, tracked schema snapshot and owner review pending.
 - **4D Reliability** — [PostgreSQL/Prisma 7/pg-boss 12 spike](../spikes/gate4d/README.md) **technical PASS: 9 real DB tests** (commit/rollback, dedup, atomic approval resume, SIGKILL recovery, local idempotency, uncertain remote state). [CI evidence](https://github.com/AlexiVion/automation-control-room/actions/runs/41836485254). ADR 0003 **proposed pending acceptance**; remote effect exactly-once never claimed.
-- **4E Security** — threat model, SSRF and credential controls, guest sandbox tests.
+- **4E Security** — [security primitives](../packages/security/README.md), [DB guest isolation/quotas spike](../spikes/gate4e/README.md) and [control matrix](security/SECURITY_CONTROLS.md) prepared as test candidates. **CI evidence and owner review pending; public network egress adapter and API middleware not implemented.**
 - **4F UX/Operations** — 90-second demo, observability, Compose topology and acceptance gate.
 
 ## Gate review status (2026-11-04)
@@ -15,7 +15,8 @@
 - **4B:** detailed domain and execution semantics proposed; not approved. Refer to [issue #3](https://github.com/AlexiVion/automation-control-room/issues/3).
 - **4C:** executable Zod/OpenAPI contracts with 24 passing tests, tracked schema snapshot and npm lockfile; owner approval pending. Issue [#4](https://github.com/AlexiVion/automation-control-room/issues/4).
 - **4D:** technical spike verified on PostgreSQL 17; 9 tests PASS, including SIGKILL/recovery; owner review pending. See [#5](https://github.com/AlexiVion/automation-control-room/issues/5).
-- **4E–4F:** security threat verification, UX and production operational evidence still pending.
+- **4E:** security primitive tests and PostgreSQL scope/quotas candidate pending CI; product integration and release controls remain blocked. [#6](https://github.com/AlexiVion/automation-control-room/issues/6).
+- **4F:** UX, operability and product-level deployment proof pending.
 - **Phase 5:** no product API, workflow runtime, public web app or deployed service has been implemented. **Contract/spike CI exists**, but is not product-level CI.
 
 ## Phase 5 vertical slices (not yet started)

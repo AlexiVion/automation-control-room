@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'packages/contracts/**'
+      - 'packages/security/**'
+      - 'spikes/gate4e/**'
       - 'docs/contracts/**'
       - 'spikes/gate4d/src/**'
       - 'spikes/gate4d/test/**'
@@ -49,6 +51,10 @@ jobs:
         run: npm run typecheck
       - name: Test contracts
         run: npm run test:contracts
+      - name: Typecheck security primitives
+        run: npm run typecheck:security
+      - name: Test security primitives
+        run: npm run test:security
       - name: Check JSON Schema snapshot
         run: npm run contracts:check
       - name: Generate Prisma 7 client
@@ -59,3 +65,7 @@ jobs:
         run: npm run typecheck:gate4d
       - name: Run real PostgreSQL transactional, duplicate and worker tests
         run: npm run test:gate4d
+      - name: Typecheck Gate 4E scoped persistence spike
+        run: npm run typecheck:gate4e
+      - name: Test isolated workspaces, atomic quotas and expiry against PostgreSQL
+        run: npm run test:gate4e
