@@ -42,7 +42,7 @@ const uuid=z.uuid();
 app.setErrorHandler((error,req,reply)=>{
   const status=error instanceof HttpError?error.statusCode:500;
   const code=error instanceof HttpError?error.errorCode:"INTERNAL_ERROR";
-  if(status>=500)req.log.error({message:error.message},"request failed");
+  if(status>=500)req.log.error({message:error instanceof Error?error.message:String(error)},"request failed");
   reply.status(status).send({error:{code,message:code,retryable:false}});
 });
 app.get("/health/live",async()=>({status:"live"}));
@@ -72,7 +72,7 @@ app.get("/v1/demo/me",async req=>{
 app.post("/v1/demo/events",async(req,reply)=>{
   const s=await mutation(req);
   const parsed=SubmitDemoEventSchema.safeParse(req.body);
-  if(!parsed.success)http(422,"INVALID_FIXTURE");
+  if(!parsed.success)throw new HttpError(422,"INVALID_FIXTURE");
   const body=parsed.data;
   const lead=fixture(body.fixtureId);
   const header=req.headers["idempotency-key"];
@@ -121,7 +121,7 @@ async function scopedRun(workspaceId:string,id:string) {
 app.get("/v1/executions/:executionId",async req=>{
   const s=await guest(req);
   const p=runParams.safeParse(req.params);
-  if(!p.success)http(400,"INVALID_ID");
+  if(!p.success)throw new HttpError(400,"INVALID_ID");
   const e=await scopedRun(s.workspaceId,p.data.executionId);
   return {executionId:e.id,workflowVersionId:e.versionId,status:e.status,
     revision:e.lastEventSeq,lastEventSeq:e.lastEventSeq};
@@ -129,10 +129,10 @@ app.get("/v1/executions/:executionId",async req=>{
 app.get("/v1/demo/runs/:executionId",async req=>{
   const s=await guest(req);
   const p=runParams.safeParse(req.params);
-  if(!p.success)http(400,"INVALID_ID");
+  if(!p.success)throw new HttpError(400,"INVALID_ID");
   const e=await db.demoExecution.findFirst({where:{id:p.data.executionId,workspaceId:s.workspaceId},
     include:{events:{orderBy:{sequence:"asc"}},approval:true}});
-  if(!e)http(404,"EXECUTION_NOT_FOUND");
+  if(!e)throw new HttpError(404,"EXECUTION_NOT_FOUND");
   return {
     execution:{id:e.id,status:e.status,leadId:e.leadId,priority:e.priority,
       category:e.category,attempts:e.attempts,lastEventSeq:e.lastEventSeq,createdAt:e.createdAt},
@@ -154,10 +154,10 @@ app.post("/v1/approvals/:approvalId/decision",async(req)=>{
   const s=await mutation(req);
   const p=z.object({approvalId:uuid}).safeParse(req.params);
   const b=ApprovalDecisionRequestSchema.safeParse(req.body);
-  if(!p.success||!b.success)http(422,"INVALID_APPROVAL_DECISION");
+  if(!p.success||!b.success)throw new HttpError(422,"INVALID_APPROVAL_DECISION");
   const a=await db.demoApproval.findFirst({where:{id:p.data.approvalId,
     execution:{workspaceId:s.workspaceId}}});
-  if(!a)http(404,"APPROVAL_NOT_FOUND");
+  if(!a)throw new HttpError(404,"APPROVAL_NOT_FOUND");
   if(a.payloadDigest!==b.data.expectedPayloadDigest)http(409,"APPROVAL_DIGEST_CONFLICT");
   return db.$transaction(async tx=>{
     const changed=await tx.demoApproval.updateMany({
@@ -187,7 +187,7 @@ app.post("/v1/approvals/:approvalId/decision",async(req)=>{
 app.get("/v1/executions/:executionId/events",async(req,reply)=>{
   const s=await guest(req);
   const p=runParams.safeParse(req.params);
-  if(!p.success)http(400,"INVALID_ID");
+  if(!p.success)throw new HttpError(400,"INVALID_ID");
   await scopedRun(s.workspaceId,p.data.executionId);
   const cursor=typeof req.headers["last-event-id"]==="string"?
     Number(req.headers["last-event-id"]):0;
