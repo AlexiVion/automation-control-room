@@ -32,7 +32,7 @@ try {
   // Full WCAG audit and screen-reader tests remain a separate review.
   const contrast=await page.evaluate(()=>{
     const luminance=rgb=>{
-      const rgbValues=(rgb.match(/\\d+(?:\\.\\d+)?/g)||[]).slice(0,3).map(Number);
+      const rgbValues=(rgb.match(/\d+(?:\.\d+)?/g)||[]).slice(0,3).map(Number);
       const components=rgbValues.map(v=>{
         const x=v/255;return x<=0.04045?x/12.92:((x+0.055)/1.055)**2.4;
       });
