@@ -4,9 +4,9 @@
 
 Automation Control Room is an open-source technical project exploring durable business workflow orchestration: how to intake an event, make a deterministic decision, request human approval, execute an idempotent action in a background worker, and inspect the resulting persistent audit trail.
 
-> **Status (November 2026):** Phase 5 / Slice 2 implemented and verified locally on Windows Docker Desktop and in GitHub Actions. This is a **local synthetic-data demonstration** with a **published, read-only workflow** — not a workflow builder, hosted SaaS, production service, or live AI agent. The implementation is on a **draft, unmerged branch**; the default branch may not contain it yet.
+> **Status (November 2026):** Phase 5 / Slice 2 implemented. The runnable local demo, final UX checks and portfolio docs are integrated in [release PR #15](https://github.com/AlexiVion/automation-control-room/pull/15), verified by Windows Docker Desktop and GitHub Actions. The release PR is **not yet merged into `main`**. This is a **synthetic-data demonstration** with a **published, read-only workflow**, not a hosted service, visual editor or live AI agent.
 
-**[View Slice 2 code](https://github.com/AlexiVion/automation-control-room/tree/feat/phase5-slice2-ux-history-20261104)** · **[Verified CI run](https://github.com/AlexiVion/automation-control-room/actions/runs/41877978061)** · **[Architecture and acceptance details](docs/phase5/SLICE2.md)** · **[Portfolio-first direction](docs/PORTFOLIO_FIRST.md)**
+**[Integrated release candidate](https://github.com/AlexiVion/automation-control-room/pull/15)** · **[Verified code + Chromium CI](https://github.com/AlexiVion/automation-control-room/actions/runs/41929735160)** · **[Architecture and acceptance details](docs/phase5/SLICE2.md)** · **[Portfolio-first direction](docs/PORTFOLIO_FIRST.md)**
 
 ## Portfolio walkthrough
 
@@ -18,7 +18,19 @@ Synthetic lead → deterministic classification → conditional routing
                → synthetic CRM write → persistent history & audit
 ```
 
-The repository includes a [75–90 second recording storyboard](docs/portfolio/DEMO_STORYBOARD.md), an [architecture diagram with technical boundaries](docs/portfolio/ARCHITECTURE_AT_A_GLANCE.md), and the [GitHub/LinkedIn publication checklist](docs/portfolio/PUBLICATION_GATE.md). **Screenshots and video are still being curated**; no hosted demo is being claimed.
+The repository includes [authentic, permanently stored Chromium screenshots](docs/portfolio/ASSET_PROVENANCE.md), a [75–90 second recording storyboard](docs/portfolio/DEMO_STORYBOARD.md), an [architecture diagram with technical boundaries](docs/portfolio/ARCHITECTURE_AT_A_GLANCE.md), and the [GitHub/LinkedIn publication checklist](docs/portfolio/PUBLICATION_GATE.md). **No video or publicly hosted demo is being claimed.**
+
+## Verified screenshots
+
+The following images were captured from a real, passing, browser-driven Chromium E2E test and preserved in this repository. The CRM is **synthetic**; classification uses a deterministic fixture. [Image provenance, source commit and SHA-256 checksums](docs/portfolio/ASSET_PROVENANCE.md).
+
+| Completed workflow and persisted CRM event | Confirmed synthetic CRM write |
+| :--- | :--- |
+| ![Read-only workflow focus mode, completed nodes and persisted CRM confirmation event](docs/portfolio/media/02b-focus-mode-audit-desktop.png) | ![Synthetic CRM screen with one confirmed lead record after human approval](docs/portfolio/media/04-confirmed-crm-desktop.png) |
+
+**Persistent history after reload**
+
+![Saved execution history and persisted event audit after a real browser reload](docs/portfolio/media/03-reloadable-history-desktop.png)
 
 ## What you can demonstrate today
 
@@ -57,15 +69,15 @@ The web UI does **not** execute the work itself. PostgreSQL is the source of tru
 ```powershell
 git clone https://github.com/AlexiVion/automation-control-room.git
 cd automation-control-room
-git switch feat/phase5-slice2-ux-history-20261104
+git switch release/portfolio-github-linkedin-20261104
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows-start-slice2.ps1 -Port 3300
 ```
 
-Open **http://localhost:3300**. The script builds one shared image, tags the processes, starts Postgres/API/worker/web, applies versioned migrations and runs HTTP + unit smoke checks. On an existing checkout it preserves the PostgreSQL volume; **do not use `docker compose down -v` unless you intend to delete local demo data**.
+Until PR #15 is merged, the `git switch` above is required; after that, the published `main` branch will contain the same runnable app. Open **http://localhost:3300**. The script builds one shared image, tags the processes, starts Postgres/API/worker/web, applies versioned migrations and runs HTTP + unit smoke checks. On an existing checkout it preserves the PostgreSQL volume; **do not use `docker compose down -v` unless you intend to delete local demo data**.
 
 Expected local markers: `PRODUCT_SLICE1_E2E_PASS` and `SLICE2_WINDOWS_PASS`.
 
-For project test matrices, Compose details, guest-data limitations and QA evidence, see [Slice 1](docs/phase5/SLICE1.md), [Slice 2](docs/phase5/SLICE2.md) and the [portfolio publication gate](docs/portfolio/PUBLICATION_GATE.md). The [Phase 4 release gates](docs/quality/RELEASE_GATES.md) are historical and do not describe the current runnable demo. The previously recorded [full CI run](https://github.com/AlexiVion/automation-control-room/actions/runs/41877978061) also exercised real product Compose and a Chromium desktop/mobile journey.
+For project test matrices, Compose details, guest-data limitations and QA evidence, see [Slice 1](docs/phase5/SLICE1.md), [Slice 2](docs/phase5/SLICE2.md) and the [portfolio publication gate](docs/portfolio/PUBLICATION_GATE.md). The [Phase 4 release gates](docs/quality/RELEASE_GATES.md) are historical and do not describe the current runnable demo. The [final UX head CI](https://github.com/AlexiVion/automation-control-room/actions/runs/41929735160) exercised the real product Compose and Chromium desktop/mobile journey. Combined release PR #15 has its own CI gate.
 
 ## Roadmap: portfolio first, product-ready by design
 
