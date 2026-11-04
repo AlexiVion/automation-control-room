@@ -105,6 +105,8 @@ export default function Dashboard(){
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const [notice,setNotice]=useState("");
+  const screenTitle=useRef<HTMLHeadingElement|null>(null);
+  const previousScreen=useRef<Screen|null>(null);
   const sessionExpired=error==="SESSION_REQUIRED";
   const [streamConnected,setStreamConnected]=useState(false);
   const [hydrated,setHydrated]=useState(false);
@@ -137,6 +139,13 @@ export default function Dashboard(){
     window.addEventListener("popstate",fromURL);
     return()=>window.removeEventListener("popstate",fromURL);
   },[]);
+  useEffect(()=>{
+    if(!hydrated)return;
+    if(previousScreen.current!==null&&previousScreen.current!==screen){
+      screenTitle.current?.focus();
+    }
+    previousScreen.current=screen;
+  },[screen,hydrated]);
   const pushRoute=useCallback((view:Screen,id:string|null)=>{
     const url=new URL(window.location.href);
     url.searchParams.set("view",view);
@@ -344,12 +353,12 @@ export default function Dashboard(){
           <strong>{screen==="demo"?"Demo":screen==="activity"?"Historial de ejecuciones":"CRM ficticio"}</strong>
         </div>
         <div className="topRight"><span className="environment">LOCAL · SLICE 2</span>
-          <a href="https://github.com/AlexiVion/automation-control-room" target="_blank" rel="noreferrer">GitHub ↗</a></div>
+          <a href="https://github.com/AlexiVion/automation-control-room/tree/feat/phase5-slice2-ux-history-20261104" target="_blank" rel="noreferrer">Código de demo ↗</a></div>
       </header>
       <div className="content slice2Content">
         <div className="heading slice2Heading">
           <div>
-            <h1>{screen==="demo"?"Tu automatización, paso a paso":screen==="activity"?"Historial de ejecuciones":"CRM de demostración"}</h1>
+            <h1 ref={screenTitle} tabIndex={-1}>{screen==="demo"?"Tu automatización, paso a paso":screen==="activity"?"Historial de ejecuciones":"CRM de demostración"}</h1>
             <p>{screen==="demo"?"Cada decisión, evento y escritura se puede inspeccionar.":screen==="activity"?
               "Volvé a cualquier ejecución guardada en tu workspace.":"Registros sintéticos escritos y confirmados por PostgreSQL."}</p>
           </div>
@@ -370,6 +379,7 @@ export default function Dashboard(){
               <select id="fixtureSelect" value={fixtureId} onChange={e=>setFixtureId(e.target.value)}>
                 {fixtures.map(f=><option key={f.id} value={f.id}>{f.name} · {f.priority}</option>)}
               </select><p>{lead?.text}</p>
+              <p className="demoWalkthrough">Elegí un caso, iniciá la ejecución y aprobá la escritura solo si se solicita.</p>
             </div>
             <label className="toggle"><input type="checkbox" checked={failOnce}
               onChange={e=>setFailOnce(e.target.checked)}/>
