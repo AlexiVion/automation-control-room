@@ -1,0 +1,9 @@
+FROM node:22-bookworm
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts --no-audit --no-fund
+COPY . .
+RUN DATABASE_URL="postgresql://placeholder:placeholder@127.0.0.1:5432/placeholder" \
+    npx prisma generate --config prisma.product.config.ts
+ENV NODE_ENV=development
+EXPOSE 3000 3100

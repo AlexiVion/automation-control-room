@@ -59,3 +59,16 @@ docker compose -f ops/compose/validation.yml up --abort-on-container-exit --exit
 ```
 
 The Compose file runs **tests only** against an isolated PostgreSQL 17; it does not create a Next.js web UI, Fastify API or product worker. Clean up with `docker compose -f ops/compose/validation.yml down -v`. See [Runbook](docs/operations/DEPLOYMENT_RUNBOOK.md) and [Release Gates](docs/quality/RELEASE_GATES.md).
+
+
+## Fase 5 — Primera demo ejecutable (rama independiente)
+
+La [implementación inicial de web + API + worker](docs/phase5/SLICE1.md) existe en la rama `feat/phase5-slice1-live-demo-20261104`, basada en la documentación de Fase 4 **todavía no fusionada**. Docker local inicia servicios reales, migraciones versionadas, ejecución con pg-boss, aprobación y CRM sintético. La demo pública, los conectores externos y el editor general todavía son tareas posteriores.
+
+```powershell
+docker compose -f ops/compose/product.yml up --build -d
+docker compose -f ops/compose/product.yml --profile test run --rm smoke
+Start-Process "http://localhost:3000"
+```
+
+No ejecutar esto en producción. [Límites y pruebas](docs/phase5/SLICE1.md).

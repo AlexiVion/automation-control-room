@@ -3,6 +3,13 @@ on:
   pull_request:
     paths:
       - 'packages/contracts/**'
+      - 'apps/**'
+      - 'packages/runtime/**'
+      - 'prisma/**'
+      - 'prisma.product.config.ts'
+      - 'scripts/smoke-product.mjs'
+      - 'ops/compose/product.yml'
+      - 'ops/compose/Dockerfile.product'
       - 'packages/ux-contracts/**'
       - 'ops/compose/**'
       - 'packages/security/**'
@@ -21,7 +28,7 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 25
     permissions:
       contents: read
     services:
@@ -47,7 +54,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install pinned direct dependencies for Gate 4D spike
+      - name: Install from committed lockfile
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Typecheck contracts
         run: npm run typecheck
@@ -77,8 +84,81 @@ jobs:
         run: npm run typecheck:gate4e
       - name: Test isolated workspaces, atomic quotas and expiry against PostgreSQL
         run: npm run test:gate4e
+      - name: Create clean PostgreSQL database for product migrations
+        shell: bash
+        run: |
+          node --input-type=module - <<'NODE'
+          import { Client } from 'pg';
+          const client = new Client({ connectionString: process.env.DATABASE_URL });
+          await client.connect();
+          await client.query('CREATE DATABASE acr_product_test');
+          await client.end();
+          NODE
+          echo "DATABASE_URL=postgresql://acr:acr_test@127.0.0.1:5432/acr_product_test" >> "$GITHUB_ENV"
+      - name: Generate product Prisma client
+        run: npx prisma generate --config prisma.product.config.ts
+      - name: Apply versioned product migrations to disposable PostgreSQL
+        run: npx prisma migrate deploy --config prisma.product.config.ts
+      - name: Typecheck Fastify API
+        run: npm run typecheck:api
+      - name: Typecheck independent worker
+        run: npm run typecheck:worker
+      - name: Typecheck Next.js UI
+        run: npm run typecheck:web
+      - name: Build Next.js UI
+        env:
+          ACR_API_INTERNAL_URL: http://127.0.0.1:3100
+        run: npm run build:web
+      - name: Full synthetic lead -> approval -> worker -> CRM HTTP E2E
+        shell: bash
+        env:
+          ACR_LOCAL_ONLY: 'true'
+          ACR_ALLOWED_ORIGINS: http://localhost:3000
+          ACR_CSRF_SECRET: 7f4f3a9b2cae7f2f674fa524c9d83a5e8c04ef68e452b1f3147cf31acf69f438
+          ACR_API_INTERNAL_URL: http://127.0.0.1:3100
+          ACR_API_BASE: http://127.0.0.1:3100
+          ACR_WEB_BASE: http://127.0.0.1:3000
+          ACR_ORIGIN: http://localhost:3000
+        run: |
+          npm run start:api > /tmp/acr-api.log 2>&1 &
+          API_PID=$!
+          trap 'kill $API_PID ${WORKER_PID:-} ${WEB_PID:-} 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 70); do
+            if curl --silent --fail http://127.0.0.1:3100/health/ready >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --silent --fail http://127.0.0.1:3100/health/ready >/dev/null || {
+            cat /tmp/acr-api.log; exit 1;
+          }
+          npm run start:worker > /tmp/acr-worker.log 2>&1 &
+          WORKER_PID=$!
+          npm run start:web > /tmp/acr-web.log 2>&1 &
+          WEB_PID=$!
+          for attempt in $(seq 1 75); do
+            if curl --silent --fail http://127.0.0.1:3000/ >/dev/null; then break; fi
+            sleep 1
+          done
+          if ! npm run test:product; then
+            echo "=== API ==="; cat /tmp/acr-api.log
+            echo "=== WORKER ==="; cat /tmp/acr-worker.log
+            echo "=== WEB ==="; cat /tmp/acr-web.log
+            exit 1
+          fi
+
+      - name: Validate local product Compose configuration
+        run: docker compose -f ops/compose/product.yml config --quiet
       - name: Verify full one-command Docker Compose validation
         shell: bash
         run: |
           trap 'docker compose -f ops/compose/validation.yml down -v --remove-orphans' EXIT
           docker compose -f ops/compose/validation.yml up --abort-on-container-exit --exit-code-from verifier
+
+
+      - name: Build and boot full local product Docker Compose + real smoke
+        shell: bash
+        env:
+          ACR_WEB_PORT: '33000'
+        run: |
+          trap 'docker compose -f ops/compose/product.yml down -v --remove-orphans' EXIT
+          docker compose -f ops/compose/product.yml up --build -d web worker
+          docker compose -f ops/compose/product.yml --profile test run --rm smoke
