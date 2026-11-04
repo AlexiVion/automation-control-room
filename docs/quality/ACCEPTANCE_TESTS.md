@@ -28,3 +28,24 @@ TypeScript typecheck/lint; unit tests for schema/engine/policy; PostgreSQL integ
 
 ## Release gate
 Evidence includes command, pinned dependency versions, test environment and result. CI should remain lean: one primary workflow for all critical checks, not redundant concurrent jobs.
+
+## Casos adicionales derivados de Gate 4A
+
+| ID | Test verificable | Gate |
+|---|---|---|
+| AT-19 | Visitante nuevo inicia workspace independiente sin usuario ni API key | 4A / 4E |
+| AT-20 | Cookie `HttpOnly/Secure/SameSite`, expiración por inactividad y absoluto 24h | 4E |
+| AT-21 | Workspace de invitado B no puede consultar ni decidir runs, drafts, CRM ni SSE del invitado A | 4E |
+| AT-22 | Mutaciones cross-origin/CSRF se rechazan con controles del servidor | 4E |
+| AT-23 | Sexta ejecución por sesión/24h, segundo run concurrente y tope global activan backpressure | 4E / 4F |
+| AT-24 | Borradores con más de 12 nodos, 20 edges o profundidad 10 se rechazan antes de publicar | 4C |
+| AT-25 | Demo pública ejecuta **cero** HTTP externos y **cero** llamadas pagas de LLM | 4E |
+| AT-26 | UI rotula la clasificación fixture y el ingreso simulado; no afirma «AI live» | 4F |
+| AT-27 | Run real en Postgres; rechazar aprobación no escribe CRM; refresh/reconexión recupera estado real | 4B / 4F |
+| AT-28 | Fallo transitorio del CRM antes del efecto crea un evento de retry, pero un solo registro final | 4D |
+| AT-29 | Webhook HMAC del operador llega al mismo caso de uso de ingreso validado que la simulación, con autenticación separada | 4C / 4E |
+| AT-30 | Cleanup elimina registros efímeros expirados y no filtra secretos/PII en logs | 4E / 4F |
+
+**Nota:** una fixture de clasificación no sustituye el test de proveedor LLM real en el modo operador. Deben existir suites independientes para la interfaz del AI Planner, validación de salida y permisos.
+
+Los escenarios y presupuestos corresponden a propuestas de Gate 4A. No pueden darse por «PASS» hasta tener código, infraestructura y ejecución repetible.
