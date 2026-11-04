@@ -152,7 +152,7 @@ export function validateWorkflowGraph(input: unknown, policy: PublishPolicy): Gr
       const referenced = /^\$\.steps\.([A-Za-z][A-Za-z0-9_-]*)\./.exec(binding.path)?.[1];
       if (referenced) {
         const ancestors = new Set<string>();
-        let parent = ins[0]?.source;
+        let parent: string | undefined = ins[0]?.source;
         while (parent && !ancestors.has(parent)) {
           ancestors.add(parent);
           parent = incoming.get(parent)?.[0]?.source;
