@@ -29,7 +29,10 @@
     "typecheck:api": "tsc --noEmit -p apps/api/tsconfig.json",
     "typecheck:worker": "tsc --noEmit -p apps/worker/tsconfig.json",
     "typecheck:web": "tsc --noEmit -p apps/web/tsconfig.json",
-    "test:product": "node scripts/smoke-product.mjs"
+    "test:product": "node scripts/smoke-product.mjs",
+    "test:history": "vitest run packages/runtime/test --maxWorkers=1",
+    "test:canvas": "vitest run apps/web/test --maxWorkers=1",
+    "test:browser": "node scripts/browser-slice2.mjs"
   },
   "dependencies": {
     "zod": "4.6.7",

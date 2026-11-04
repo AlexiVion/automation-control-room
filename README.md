@@ -1,74 +1,75 @@
 # Automation Control Room
 
-> **Status: Phase 4 — architecture definition. This repository has no runnable application yet.**
+**A full-stack engineering portfolio project — working local demo, not a commercial product.**
 
-Open-source, AI-assisted business workflow orchestration. Build workflows visually or from natural language, approve sensitive actions, run them through independent workers, and inspect persistent execution events.
+Automation Control Room is an open-source technical project exploring durable business workflow orchestration: how to intake an event, make a deterministic decision, request human approval, execute an idempotent action in a background worker, and inspect the resulting persistent audit trail.
 
-## Start here
-- [Product requirements](docs/product/PRD.md)
-- [Architecture blueprint](docs/architecture/ARCHITECTURE.md)
-- [Domain model](docs/architecture/DOMAIN_MODEL.md)
-- [Execution semantics](docs/architecture/EXECUTION_SEMANTICS.md)
-- [Workflow schema](docs/contracts/WORKFLOW_SCHEMA.md)
-- [AI contract](docs/contracts/AI_CONTRACT.md)
-- [Executable contract package](packages/contracts/README.md)
-- [OpenAPI 3.1](docs/contracts/openapi.yaml)
-- [API error taxonomy](docs/contracts/API_ERRORS.md)
-- [Connector contract](docs/contracts/CONNECTOR_SDK.md)
-- [Threat model](docs/security/THREAT_MODEL.md)
-- [Acceptance tests](docs/quality/ACCEPTANCE_TESTS.md)
-- [Architecture decision records](docs/adr/README.md)
-- [Phase 4 roadmap](docs/ROADMAP.md)
-- [Phase 4 consolidated architecture baseline and test evidence](docs/PHASE4_BASELINE.md)
-- [Gate 4F UX specification](docs/ux/UX_SPEC.md)
-- [Gate 4F wireframes](docs/ux/WIREFRAMES.md)
-- [90-second demo acceptance script](docs/ux/DEMO_ACCEPTANCE_SCRIPT.md)
-- [UX state projection contract](packages/ux-contracts/README.md)
-- [Local validation Compose](ops/compose/validation.yml)
-- [Operations runbook](docs/operations/DEPLOYMENT_RUNBOOK.md)
-- [Release gates](docs/quality/RELEASE_GATES.md)
-- [Full architecture research report (Spanish)](docs/research/ARCHITECTURE_RESEARCH_20261103.md)
-- [Phase 4 documentation plan (Spanish)](docs/research/PHASE4_DOCUMENT_PLAN.md)
-- [Reference repositories](docs/research/REFERENCE_REPOS.md)
-- [Phase 4 gate issues](.github/PHASE4_ISSUES.md)
-- [Gate 4D PostgreSQL + Prisma/pg-boss reliability spike](spikes/gate4d/README.md)
-- [Gate 4E security primitives](packages/security/README.md)
-- [Gate 4E isolated guest persistence tests](spikes/gate4e/README.md)
-- [Security controls and remaining blockers](docs/security/SECURITY_CONTROLS.md)
-- [Contributing](CONTRIBUTING.md)
+> **Status (November 2026):** Phase 5 / Slice 2 implemented and verified locally on Windows Docker Desktop and in GitHub Actions. This is a **local synthetic-data demonstration** with a **published, read-only workflow** — not a workflow builder, hosted SaaS, production service, or live AI agent. The implementation is on a **draft, unmerged branch**; the default branch may not contain it yet.
 
-## Architectural direction (proposed)
-TypeScript modular monolith with three processes: Next.js web, Fastify API, and independent worker. PostgreSQL is the source of truth, pg-boss is the proposed queue (Prisma 7/PostgreSQL 17 atomic enqueue verified in isolated Gate 4D tests, final architectural acceptance pending), and a custom deterministic workflow engine executes typed nodes. React Flow presents the graph; an LLM may propose schema-validated drafts but cannot execute arbitrary actions.
+**[View Slice 2 code](https://github.com/AlexiVion/automation-control-room/tree/feat/phase5-slice2-ux-history-20261104)** · **[Verified CI run](https://github.com/AlexiVion/automation-control-room/actions/runs/41877978061)** · **[Architecture and acceptance details](docs/phase5/SLICE2.md)** · **[Portfolio-first direction](docs/PORTFOLIO_FIRST.md)**
 
-## Demo vertical slice
-Signed lead webhook → typed AI classification (or clearly labeled fixture) → human approval → idempotent demo CRM upsert → events, failure injection, recovery and execution inspector.
+## What you can demonstrate today
 
-## Project boundary
-Independent of ClickDialog: no shared source, clients, credentials, database, infrastructure, billing or production services. No commercial SaaS or unrestricted outbound HTTP in MVP.
+- **Real execution lifecycle:** choose a synthetic lead → classify with an explicitly labelled deterministic fixture → evaluate a condition → approve/reject a proposed CRM write → let an independent worker complete the run.
+- **Durable evidence:** PostgreSQL-backed execution events, approved/rejected decisions, execution history, a synthetic CRM record and linked audit trail. Refresh a page and inspect the same saved run.
+- **Reliability and correctness:** transactional enqueue, durable worker processing, scoped session authorization, idempotent local CRM upsert, controlled retry, rejection, quota and cross-session isolation.
+- **Workflow visualization:** zoomable/pannable read-only canvas generated from a published graph, both decision branches, minimap, focused inspection mode and event-derived states.
+- **Verifiable metrics:** normal approved CRM write = 1 CRM attempt / 0 retries; the controlled transient-failure case = 2 attempts / 1 retry.
 
-## Governance
-All specifications, contracts and ADRs are **proposed**, not approved. The contract code is not an API or worker. The Phase 4 gate must be completed before production implementation. The repository is not yet a finished product.
+**This is not yet:** an editable general workflow engine, a third-party integration platform, an authenticated operator console, an LLM-powered planner or a public deployment. Those are possible engineering extensions, not features being advertised here.
 
-## License
-Apache License 2.0 for original work; consult [LICENSE](LICENSE). Dependencies and borrowed code require independent license review.
+## Architecture
 
-## Gate 4F: local validation (not a runnable product)
-
-```sh
-docker compose -f ops/compose/validation.yml up --abort-on-container-exit --exit-code-from verifier
+```text
+Next.js + React UI
+       |
+       | same-origin API proxy / guest cookie
+       v
+Fastify API --- session scope / approval / event history
+       |
+       v
+PostgreSQL 17 <---> pg-boss queue
+       ^
+       |
+Independent worker ---> deterministic workflow steps ---> synthetic demo CRM
 ```
 
-The Compose file runs **tests only** against an isolated PostgreSQL 17; it does not create a Next.js web UI, Fastify API or product worker. Clean up with `docker compose -f ops/compose/validation.yml down -v`. See [Runbook](docs/operations/DEPLOYMENT_RUNBOOK.md) and [Release Gates](docs/quality/RELEASE_GATES.md).
+**Technology:** TypeScript, Next.js, React, Fastify, PostgreSQL 17, Prisma 7, pg-boss, Zod, Docker Compose, Vitest and Chromium browser E2E testing.
 
+The web UI does **not** execute the work itself. PostgreSQL is the source of truth for decisions and progress; the queue and browser event stream are delivery mechanisms. The synthetic demo is deliberately isolated from external credentials and paid AI services.
 
-## Fase 5 — Primera demo ejecutable (rama independiente)
+## Run locally (Windows / Docker Desktop)
 
-La [implementación inicial de web + API + worker](docs/phase5/SLICE1.md) existe en la rama `feat/phase5-slice1-live-demo-20261104`, basada en la documentación de Fase 4 **todavía no fusionada**. Docker local inicia servicios reales, migraciones versionadas, ejecución con pg-boss, aprobación y CRM sintético. La demo pública, los conectores externos y el editor general todavía son tareas posteriores.
+**Prerequisites:** Git, Docker Desktop with the **Linux engine** running, and PowerShell. The demo stays bound to localhost.
 
 ```powershell
-docker compose -f ops/compose/product.yml up --build -d
-docker compose -f ops/compose/product.yml --profile test run --rm smoke
-Start-Process "http://localhost:3000"
+git clone https://github.com/AlexiVion/automation-control-room.git
+cd automation-control-room
+git switch feat/phase5-slice2-ux-history-20261104
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows-start-slice2.ps1 -Port 3300
 ```
 
-No ejecutar esto en producción. [Límites y pruebas](docs/phase5/SLICE1.md).
+Open **http://localhost:3300**. The script builds one shared image, tags the processes, starts Postgres/API/worker/web, applies versioned migrations and runs HTTP + unit smoke checks. On an existing checkout it preserves the PostgreSQL volume; **do not use `docker compose down -v` unless you intend to delete local demo data**.
+
+Expected local markers: `PRODUCT_SLICE1_E2E_PASS` and `SLICE2_WINDOWS_PASS`.
+
+For project test matrices, Compose details, guest-data limitations and QA evidence, see [Slice 1](docs/phase5/SLICE1.md), [Slice 2](docs/phase5/SLICE2.md) and the [release gates](docs/quality/RELEASE_GATES.md). The previously recorded [full CI run](https://github.com/AlexiVion/automation-control-room/actions/runs/41877978061) also exercised real product Compose and a Chromium desktop/mobile journey.
+
+## Roadmap: portfolio first, product-ready by design
+
+The **current deliverable** is a high-quality, reproducible engineering case study suitable for GitHub and LinkedIn. Near-term work prioritizes a clear README, real screenshots or a 60–90-second walkthrough, a reproducible local install, architecture explanations, reliable CI and honest documentation of technical trade-offs.
+
+We are deliberately keeping a future product path open through typed contracts, immutable published versions, isolated workspaces, durable execution semantics and connector interfaces. A **general editor, operator authentication, guarded external connectors, optional LLM integration, advanced operations and public-release security** require separate implementation and acceptance. Commercial plans, billing, multitenant SaaS and a plugin marketplace are **not current goals**.
+
+See [portfolio scope and decision gates](docs/PORTFOLIO_FIRST.md) and the [follow-up engineering backlog](https://github.com/AlexiVion/automation-control-room/issues/11).
+
+## Engineering references
+
+- [Product requirements / proposed future scope](docs/product/PRD.md) — a design proposal, **not a list of implemented features**.
+- [Architecture blueprint](docs/architecture/ARCHITECTURE.md) · [Domain and state machine](docs/architecture/DOMAIN_MODEL.md) · [Execution semantics](docs/architecture/EXECUTION_SEMANTICS.md)
+- [Executable Zod contracts](packages/contracts/README.md) · [OpenAPI 3.1](docs/contracts/openapi.yaml) · [Connector SDK proposal](docs/contracts/CONNECTOR_SDK.md)
+- [Threat model](docs/security/THREAT_MODEL.md) · [Security controls and known gaps](docs/security/SECURITY_CONTROLS.md)
+- [Phase 4 baseline](docs/PHASE4_BASELINE.md) · [UX acceptance script](docs/ux/DEMO_ACCEPTANCE_SCRIPT.md) · [Release gates](docs/quality/RELEASE_GATES.md)
+- [Operational runbook](docs/operations/DEPLOYMENT_RUNBOOK.md) · [Contributing](CONTRIBUTING.md)
+
+**Project boundary:** independent of ClickDialog; no shared customer data, infrastructure, credentials or billing systems. Original work is licensed under [Apache-2.0](LICENSE); third-party dependencies retain their own licenses.
