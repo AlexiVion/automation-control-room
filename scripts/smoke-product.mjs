@@ -164,6 +164,25 @@ log("Durable scoped run listing + signed 3-page cursor + filters + published gra
 const other=await json("/v1/demo/sessions",{method:"POST",expected:201});
 const otherCookie=other.response.headers.get("set-cookie")?.split(";")[0];
 assert.ok(otherCookie);
+// Docker Desktop/Windows can correct wall time backwards immediately after a
+// session was created. The 256-bit opaque cookie is still valid if idle and
+// absolute expirations hold; createdAt is audit metadata, not an auth gate.
+// Simulate a DB clock rollback deterministically without changing host clocks.
+if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL required for session-clock regression");
+const { createHash } = await import("node:crypto");
+const { default: pg } = await import("pg");
+const tokenHash=createHash("sha256").update(otherCookie.split("=")[1]).digest("hex");
+const clockDb=new pg.Client({connectionString:process.env.DATABASE_URL});
+await clockDb.connect();
+try {
+  const moved=await clockDb.query(
+    `UPDATE "DemoSession" SET "createdAt" = CURRENT_TIMESTAMP + INTERVAL '2 minutes' WHERE "tokenHash" = $1`,
+    [tokenHash]
+  );
+  assert.equal(moved.rowCount,1,"Expected to simulate skew on this exact synthetic session");
+} finally { await clockDb.end(); }
+assert.equal((await json("/v1/demo/me",{cookie:otherCookie})).value.workspaceId,other.value.workspaceId);
+log("Fresh guest cookie survives a simulated DB wall-clock rollback");
 await json("/v1/demo/runs/"+firstRun,{cookie:otherCookie,expected:404});
 const {value:isolatedHistory}=await json("/v1/demo/runs?limit=5",{cookie:otherCookie});
 assert.equal(isolatedHistory.total,0);
@@ -177,8 +196,6 @@ log("Cross-workspace isolation + CSRF rejection");
 // Sessions must still expire after 30 min idle; fixing concurrent 401 may not
 // turn invalid/expired sessions into authenticated ones.
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL required for expiry test");
-const { createHash } = await import("node:crypto");
-const { default: pg } = await import("pg");
 const client = new pg.Client({connectionString:process.env.DATABASE_URL});
 await client.connect();
 try {
