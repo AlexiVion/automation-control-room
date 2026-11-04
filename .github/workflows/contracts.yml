@@ -156,6 +156,8 @@ jobs:
 
       - name: Build and boot full local product Docker Compose + real smoke
         shell: bash
+        env:
+          ACR_WEB_PORT: '33000'
         run: |
           trap 'docker compose -f ops/compose/product.yml down -v --remove-orphans' EXIT
           docker compose -f ops/compose/product.yml up --build -d web worker
