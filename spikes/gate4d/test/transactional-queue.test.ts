@@ -80,7 +80,7 @@ describe("Gate 4D — real PostgreSQL + Prisma7 + pg-boss12", () => {
     await workerBoss.start();
     let workerId: string | undefined;
     try {
-      workerId = await workerBoss.work(QUEUE, { pollingIntervalSeconds: 0.2 }, async jobs => {
+      workerId = await workerBoss.work(QUEUE, { pollingIntervalSeconds: 0.5 }, async jobs => {
         for (const job of jobs) {
           const { executionId } = job.data as { executionId: string };
           await commitLocalCrmEffect(prisma, executionId);
