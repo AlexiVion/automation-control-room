@@ -51,6 +51,12 @@ try {
   await page.getByRole("button",{name:/Iniciar automatización/}).click();
   await page.getByRole("heading",{name:"Esta acción necesita tu aprobación"}).waitFor({timeout});
   await page.getByRole("button",{name:/Aprobación, En espera/}).waitFor({timeout});
+  const decision=await page.locator(".slice2Approval").boundingBox();
+  const canvas=await page.locator(".workflowPanel").boundingBox();
+  assert.ok(decision&&canvas&&decision.y+decision.height<canvas.y,
+    "Approval must be before the large canvas so the primary task is discoverable");
+  assert.equal(await page.getByRole("button",{name:"Aprobar escritura"}).isVisible(),true);
+  console.log("PASS pending human decision precedes canvas with visible primary action");
   await page.screenshot({path:path.join(evidence,"01-awaiting-approval-desktop.png"),fullPage:true});
   console.log("PASS browser waiting approval state is not marked completed");
 
@@ -105,6 +111,14 @@ try {
 
   await page.getByRole("button",{name:/Historial/}).click();
   await page.getByRole("heading",{name:"Ejecuciones guardadas"}).waitFor({timeout});
+  assert.equal(new URL(page.url()).searchParams.get("view"),"activity");
+  assert.equal(await page.getByRole("button",{name:/Historial/}).getAttribute("aria-current"),"page");
+  await page.getByText(/búsqueda de texto no consulta otras páginas del servidor/i).waitFor({timeout});
+  await page.getByLabel("Filtrar filas cargadas por lead o ID").fill("no_match_demo");
+  await page.getByText(/No hay coincidencias en las páginas cargadas/).waitFor({timeout});
+  await page.getByRole("button",{name:"Limpiar búsqueda"}).click();
+  await page.locator(".historyRow").first().waitFor({timeout});
+  console.log("PASS history search scope is honest and clearable, active view is semantic");
   await page.locator(".historyRow").first().waitFor({timeout});
   const currentID=(new URL(page.url())).searchParams.get("run");
   assert.ok(currentID&&currentID.length===36,"The selected run must be in URL");
@@ -120,6 +134,14 @@ try {
 
   await page.getByRole("button",{name:/CRM ficticio/}).click();
   await page.getByText("lead_demo_001",{exact:true}).first().waitFor({timeout});
+  assert.equal(new URL(page.url()).searchParams.get("view"),"crm");
+  await page.goBack();
+  await page.getByRole("heading",{name:"Historial de ejecuciones"}).waitFor({timeout});
+  assert.equal(new URL(page.url()).searchParams.get("view"),"activity");
+  await page.goForward();
+  await page.getByRole("heading",{name:"CRM de demostración"}).waitFor({timeout});
+  assert.equal(new URL(page.url()).searchParams.get("view"),"crm");
+  console.log("PASS browser Back/Forward restores navigation and run context");
   const crmRows=page.locator(".slice2CRM tbody tr");
   assert.equal(await crmRows.count(),1);
   await page.getByRole("button",{name:"Ver ejecución ↗"}).first().click();
@@ -133,6 +155,9 @@ try {
   mobile.on("pageerror",error=>errors.push(String(error)));
   await mobile.goto(base,{waitUntil:"domcontentloaded",timeout});
   await mobile.getByRole("heading",{name:"Tu automatización, paso a paso"}).waitFor({timeout});
+  const mobileNavFont=await mobile.getByRole("button",{name:/Historial/})
+    .evaluate(element=>Number.parseFloat(getComputedStyle(element).fontSize));
+  assert.ok(mobileNavFont>=11,"Mobile navigation labels should not be hidden");
   await mobile.locator(".mobileWorkflowNodes .mobileWorkflowNode").first().waitFor({timeout});
   const otherWorkspace=await mobile.locator(".sideBottom strong").innerText();
   assert.notEqual(otherWorkspace,originalWorkspace,"Separate profiles require different guest workspace IDs");
@@ -145,7 +170,23 @@ try {
   await mobile.screenshot({path:path.join(evidence,"05-mobile-isolated-crm.png"),fullPage:true});
   await mobile.getByRole("button",{name:/Historial/}).click();
   await mobile.getByText("No hay ejecuciones para este filtro.").waitFor({timeout});
-  console.log("PASS browser mobile viewport and independent guest isolation");
+  console.log("PASS browser mobile labelled navigation, viewport and guest isolation");
+  // Expiration and stale links must recover explicitly rather than trapping visitors.
+  await context.clearCookies();
+  await page.getByRole("button",{name:/Demo interactiva/}).click();
+  await page.getByRole("button",{name:"Actualizar ejecución"}).click();
+  await page.getByRole("button",{name:"Iniciar nueva sesión demo"}).waitFor({timeout});
+  await page.screenshot({path:path.join(evidence,"06-expired-session-recovery.png"),fullPage:false});
+  await page.getByRole("button",{name:"Iniciar nueva sesión demo"}).click();
+  await page.getByText(/Nueva sesión de demostración activa/).waitFor({timeout});
+  const restoredWorkspace=await page.locator(".sideBottom strong").innerText();
+  assert.notEqual(restoredWorkspace,originalWorkspace);
+  assert.equal(new URL(page.url()).searchParams.has("run"),false);
+  await page.goto(base+"?view=activity&run="+currentID,{waitUntil:"domcontentloaded",timeout});
+  await page.getByText(/ejecución del enlace pertenece a otra sesión demo o ya venció/).waitFor({timeout});
+  assert.equal(new URL(page.url()).searchParams.has("run"),false,
+    "Unowned deep link must not remain selected");
+  console.log("PASS explicit expired-guest recovery and safe stale-run deep-link handling");
   assert.deepEqual(errors,[],"Browser application must not produce uncaught runtime exceptions");
   await isolated.close();await context.close();
   console.log("PRODUCT_SLICE2_BROWSER_E2E_PASS");
