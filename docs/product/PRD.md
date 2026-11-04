@@ -141,8 +141,10 @@ El botón de la demo no podrá activar únicamente una animación. Sus resultado
 - Canvas con zoom/pan, selección y arrastre de nodos; agregar/quitar nodos de catálogo disponible, conectar nodos, inspector lateral de propiedades.
 - Validación local informativa y **validación definitiva del backend al publicar**.
 - Puede editarse un borrador; publicar crea una nueva versión inmutable. En ejecución, solo se admite consulta y acciones controladas de aprobación/cancelación.
-- No habrá scripting arbitrario, loops, subworkflows, marketplace, importación de plugins de terceros, colaboración multiusuario en tiempo real ni conexiones de cuentas de proveedores externas en el modo demo.
+- No habrá ejecución paralela de ramas, joins, scripting arbitrario, loops, subworkflows, marketplace, importación de plugins de terceros, colaboración multiusuario en tiempo real ni conexiones de cuentas de proveedores externas en el modo demo.
 - Natural language → workflow solo en modo operador con LLM real configurado; ejemplos guiados sin LLM solo en modo demo y **etiquetados como plantilla/fixture**.
+
+**Alcance del grafo:** v1 ejecuta como máximo un paso a la vez por run; las condiciones eligen una rama exclusiva. No hay fanout paralelo ni joins en MVP. El detalle de contratos y estados se define en Gates 4B/4C.
 
 ## 7. Pantallas y navegación de MVP
 
