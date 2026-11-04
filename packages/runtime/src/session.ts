@@ -51,7 +51,8 @@ export async function resolveSession(token: string | undefined) {
     WHERE s."tokenHash" = ${tokenHash}
       AND s."workspaceId" = w."id"
       AND s."createdAt" <= CURRENT_TIMESTAMP
-      AND s."lastSeenAt" <= CURRENT_TIMESTAMP
+      -- Do NOT require lastSeenAt <= CURRENT_TIMESTAMP: a parallel request can
+      -- commit a newer timestamp while this statement awaits the row lock.
       AND s."lastSeenAt" > CURRENT_TIMESTAMP - INTERVAL '30 minutes'
       AND s."expiresAt" > CURRENT_TIMESTAMP
       AND w."expiresAt" > CURRENT_TIMESTAMP
