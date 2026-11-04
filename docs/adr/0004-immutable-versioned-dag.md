@@ -8,7 +8,7 @@ Published immutable workflow DAG.
 Pinned versions make paused/restarted executions reproducible and prevent mid-run graph mutation.
 
 ## Tradeoff
-Cycles and complex subworkflows are deferred.
+Cycles, parallel fanout, joins and complex subworkflows are deferred. Conditions choose exclusive branches; one runnable step per execution in MVP.
 
 ## Acceptance / reconsideration
-Revisit only with explicit state-machine and migration design.
+Revisit only with explicit state-machine, graph validation, authorization and migration design.
