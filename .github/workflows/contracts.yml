@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     permissions:
-      contents: write # TEMPORARY for committing lockfile on this trusted branch; switch back to read after
+      contents: read
     services:
       postgres:
         image: postgres:17
@@ -41,7 +41,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install pinned direct dependencies for Gate 4D spike
-        run: npm install --ignore-scripts --no-audit --no-fund
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Typecheck contracts
         run: npm run typecheck
       - name: Test contracts
@@ -56,13 +56,3 @@ jobs:
         run: npm run typecheck:gate4d
       - name: Run real PostgreSQL transactional, duplicate and worker tests
         run: npm run test:gate4d
-      - name: Commit candidate npm lockfile only to trusted branch
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'docs/phase4-architecture-foundation-20261104'
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add package-lock.json
-          if ! git diff --cached --quiet; then
-            git commit -m 'chore(gate4d): lock Prisma 7 and pg-boss versions'
-            git push origin HEAD:refs/heads/docs/phase4-architecture-foundation-20261104
-          fi

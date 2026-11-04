@@ -4,6 +4,8 @@ import { PgBoss, fromPrisma } from "pg-boss";
 import { PrismaClient } from "../generated/prisma/client.js";
 
 export const QUEUE = "acr-gate4d-execution";
+export const RESUME_QUEUE = "acr-gate4d-resume";
+export const CRASH_QUEUE = "acr-gate4d-crash";
 export const BOSS_SCHEMA = "acr_gate4d_jobs";
 
 export function connect() {
@@ -12,7 +14,7 @@ export function connect() {
     throw new Error("Gate 4D spike accepts only local PostgreSQL; never connect production DB");
   }
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
-  const boss = new PgBoss({ connectionString, schema: BOSS_SCHEMA });
+  const boss = new PgBoss({ connectionString, schema: BOSS_SCHEMA, superviseIntervalSeconds: 2, monitorIntervalSeconds: 2 });
   boss.on("error", (err) => { console.error("pg-boss spike:", err); });
   return { prisma, boss };
 }
@@ -104,3 +106,43 @@ export async function countJobsForEvent(prisma: Database, eventId: string) {
   return rows[0]?.amount ?? 0;
 }
 export const uniqueEventId = () => randomUUID();
+
+/**
+ * Durable approval resume: approval decision, execution transition, event and
+ * pg-boss continuation command are committed as one Prisma transaction.
+ */
+export async function approveAndQueueResume(
+  prisma: Database, boss: Boss, approvalId: string, shouldRollback = false
+) {
+  return prisma.$transaction(async tx => {
+    const approval = await tx.spikeApproval.findUniqueOrThrow({ where: { id: approvalId } });
+    const decided = await tx.spikeApproval.updateMany({
+      where: { id: approvalId, status: "pending" },
+      data: { status: "approved" }
+    });
+    if (decided.count !== 1) return { accepted: false, jobId: null };
+    const moved = await tx.spikeExecution.updateMany({
+      where: { id: approval.executionId, status: "waiting_approval" },
+      data: { status: "queued" }
+    });
+    if (moved.count !== 1) throw new Error("APPROVAL_STATE_CONFLICT");
+    const jobId = await boss.send(
+      RESUME_QUEUE,
+      { approvalId, executionId: approval.executionId },
+      { db: fromPrisma(tx) }
+    );
+    if (!jobId) throw new Error("RESUME_JOB_MISSING");
+    await tx.spikeEvent.create({ data: {
+      executionId: approval.executionId, sequence: 2, eventType: "approval.approved"
+    } });
+    if (shouldRollback) throw new Error("INTENTIONAL_APPROVAL_ROLLBACK");
+    return { accepted: true, jobId };
+  });
+}
+export async function countResumeJobs(prisma: Database, approvalId: string) {
+  const rows = await prisma.$queryRawUnsafe<Array<{ amount: number }>>(
+    `SELECT count(*)::integer AS amount FROM ${BOSS_SCHEMA}.job WHERE name = $1 AND data->>'approvalId' = $2`,
+    RESUME_QUEUE, approvalId
+  );
+  return rows[0]?.amount ?? 0;
+}

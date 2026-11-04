@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PgBoss } from "pg-boss";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import {
-  BOSS_SCHEMA, QUEUE, approveOnce, commitLocalCrmEffect, connect,
-  countJobsForEvent, countJobsForId, duplicateSafeIntake,
+  BOSS_SCHEMA, QUEUE, CRASH_QUEUE, RESUME_QUEUE, approveOnce, approveAndQueueResume, commitLocalCrmEffect, connect,
+  countJobsForEvent, countJobsForId, countResumeJobs, duplicateSafeIntake,
   recordUncertainExternalEffect, startExecution, uniqueEventId
 } from "../src/spike.js";
 
@@ -23,6 +25,8 @@ describe("Gate 4D — real PostgreSQL + Prisma7 + pg-boss12", () => {
     await prisma.$connect();
     await boss.start();
     await boss.createQueue(QUEUE, { retryLimit: 2, retryDelay: 0 });
+    await boss.createQueue(RESUME_QUEUE, { retryLimit: 2, retryDelay: 0 });
+    await boss.createQueue(CRASH_QUEUE, { retryLimit: 2, retryDelay: 0, expireInSeconds: 5 });
   }, 35_000);
   afterAll(async () => {
     await boss.stop();
@@ -103,6 +107,99 @@ describe("Gate 4D — real PostgreSQL + Prisma7 + pg-boss12", () => {
       await workerBoss.stop();
     }
   }, 35_000);
+
+
+  it("atomically decides approval and enqueues a single resume job under concurrent requests", async () => {
+    const eventId = uniqueEventId();
+    const { execution } = await startExecution(prisma, boss, "approval", eventId);
+    await prisma.spikeExecution.update({
+      where: { id: execution.id }, data: { status: "waiting_approval" }
+    });
+    const approval = await prisma.spikeApproval.create({ data: { executionId: execution.id } });
+    const result = await Promise.all([
+      approveAndQueueResume(prisma, boss, approval.id),
+      approveAndQueueResume(prisma, boss, approval.id)
+    ]);
+    expect(result.filter(r => r.accepted)).toHaveLength(1);
+    expect(await countResumeJobs(prisma, approval.id)).toBe(1);
+    expect((await prisma.spikeApproval.findUniqueOrThrow({ where: { id: approval.id } })).status).toBe("approved");
+    expect((await prisma.spikeExecution.findUniqueOrThrow({ where: { id: execution.id } })).status).toBe("queued");
+    expect(await prisma.spikeEvent.count({ where: { executionId: execution.id } })).toBe(2);
+  }, 25_000);
+
+  it("rolls back approval, execution transition, event and resume job together", async () => {
+    const eventId = uniqueEventId();
+    const { execution } = await startExecution(prisma, boss, "approval", eventId);
+    await prisma.spikeExecution.update({
+      where: { id: execution.id }, data: { status: "waiting_approval" }
+    });
+    const approval = await prisma.spikeApproval.create({ data: { executionId: execution.id } });
+    await expect(approveAndQueueResume(prisma, boss, approval.id, true))
+      .rejects.toThrow("INTENTIONAL_APPROVAL_ROLLBACK");
+    expect((await prisma.spikeApproval.findUniqueOrThrow({ where: { id: approval.id } })).status).toBe("pending");
+    expect((await prisma.spikeExecution.findUniqueOrThrow({ where: { id: execution.id } })).status).toBe("waiting_approval");
+    expect(await countResumeJobs(prisma, approval.id)).toBe(0);
+    expect(await prisma.spikeEvent.count({ where: { executionId: execution.id } })).toBe(1);
+  }, 25_000);
+
+  it("recovers a claimed job after SIGKILL of independent worker and avoids local duplicate CRM write", async () => {
+    const eventId = uniqueEventId();
+    const execution = await prisma.spikeExecution.create({ data: { sourceId: "crash", eventId } });
+    await prisma.spikeEvent.create({ data: { executionId: execution.id, sequence: 1, eventType: "queued" } });
+    const jobId = await boss.send(CRASH_QUEUE, { executionId: execution.id, eventId },
+      { expireInSeconds: 5, retryLimit: 2, retryDelay: 0 });
+    expect(jobId).toBeTruthy();
+    const childPath = fileURLToPath(new URL("../src/crash-worker.ts", import.meta.url));
+    const child = spawn(process.execPath, ["--import", "tsx", childPath], {
+      env: { ...process.env, DATABASE_URL: url },
+      stdio: ["ignore", "pipe", "pipe", "ipc"]
+    });
+    let errors = "";
+    child.stderr?.on("data", chunk => { errors += String(chunk); });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("CHILD_WORKER_TIMEOUT " + errors)), 12_000);
+        child.on("error", err => { clearTimeout(timeout); reject(err); });
+        child.on("exit", (code, signal) => {
+          clearTimeout(timeout);
+          reject(new Error("CHILD_WORKER_EXIT_EARLY " + code + " " + signal + " " + errors));
+        });
+        child.on("message", msg => {
+          if (typeof msg === "object" && msg !== null && "type" in msg && msg.type === "claimed") {
+            clearTimeout(timeout);
+            resolve();
+          }
+        });
+      });
+      expect((await prisma.spikeExecution.findUniqueOrThrow({ where: { id: execution.id } })).status).toBe("queued");
+    } finally {
+      child.kill("SIGKILL");
+      await new Promise(resolve => child.once("exit", resolve));
+    }
+    const workerId = await boss.work(CRASH_QUEUE, { pollingIntervalSeconds: 0.5 }, async jobs => {
+      for (const job of jobs) await commitLocalCrmEffect(prisma, (job.data as {executionId:string}).executionId);
+    });
+    try {
+      await waitFor(async () => (await prisma.spikeExecution.findUnique({
+        where: { id: execution.id }
+      }))?.status === "completed", 40_000);
+      expect(await prisma.spikeCrmRecord.count({ where: { externalKey: eventId } })).toBe(1);
+      expect(await prisma.spikeEvent.count({ where: { executionId: execution.id } })).toBe(2);
+      // An additional claim redelivery cannot duplicate confirmed local effect.
+      await boss.send(CRASH_QUEUE, { executionId: execution.id, eventId });
+      await waitFor(async () => {
+        const rows = await prisma.$queryRawUnsafe<Array<{ amount: number }>>(
+          `SELECT count(*)::integer AS amount FROM ${BOSS_SCHEMA}.job
+           WHERE name = $1 AND data->>'eventId' = $2 AND state = 'completed'`,
+          CRASH_QUEUE, eventId
+        );
+        return (rows[0]?.amount ?? 0) >= 2;
+      }, 15_000);
+      expect(await prisma.spikeCrmRecord.count({ where: { externalKey: eventId } })).toBe(1);
+    } finally {
+      await boss.offWork(workerId);
+    }
+  }, 65_000);
 
   it("records an uncertain remote effect once and never blindly retries it", async () => {
     const eventId = uniqueEventId();

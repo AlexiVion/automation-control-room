@@ -30,19 +30,20 @@ The spike **refuses nonlocal database hostnames**. The schema is intentionally d
 1. Same Prisma interactive transaction persists execution/event and pg-boss job.
 2. Throw before commit restores no execution and **no matching queued job**.
 3. Concurrent duplicate intake is prevented by a database UNIQUE constraint and does not enqueue twice.
-4. Competing approval decisions via conditional update yield a single winner (no resume enqueue in this minimal example).
+4. Competing approval decisions via conditional update yield a single winner. Additional tests verify **approval decision + execution state + event + resume job** commit atomically and rollback together.
 5. Queued job remains durable with no consumer and is processed when an independent worker starts; local CRM upsert and event are idempotent after duplicate delivery.
+7. A real OS-level **SIGKILL** of an independently spawned worker after claiming a short-expiry job permits the supervisor to retry it; the recovered worker applies a single idempotent local CRM upsert.
 6. A deliberately uncertain *remote* effect is marked `needs_review` without external retry.
 
 ## Not proven here
 
-- A genuine OS-kill of a worker **during** a remote HTTP side effect, lease expiry and supervisor redrive.
+- A genuine OS-kill of a worker **during a remote HTTP side effect**; the added SIGKILL test interrupts the worker **before any side effect** and waits for supervisor retry.
 - Exactly-once effects on arbitrary third-party APIs.
 - Atomicity of **worker acknowledgement** with multiple Prisma writes (a separate pg-boss transactional worker design may be appropriate).
 - Production network security, billing, auth, multi-tenancy, capacity, backups or disaster recovery.
-- A complete workflow runtime or human-approval resume job.
+- A complete workflow runtime (this spike proves the atomic **approval resume job handoff**, not a running approval workflow).
 
-Before accepting Gate 4D, add fault-injection for a killed worker and persist + enqueue approval resume using the same transaction, or explicitly record residual risk and scope decisions.
+Before accepting Gate 4D, confirm CI evidence for the SIGKILL recovery and approval resume tests, document the remaining uncertainty of external effects, and explicitly approve bounded reliability semantics.
 
 ## Reference
 
