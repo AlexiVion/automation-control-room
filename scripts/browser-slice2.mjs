@@ -187,6 +187,29 @@ try {
   assert.equal(new URL(page.url()).searchParams.has("run"),false,
     "Unowned deep link must not remain selected");
   console.log("PASS explicit expired-guest recovery and safe stale-run deep-link handling");
+  // A transient GET /me server failure must not create a new workspace
+  // automatically or leave visitors watching a permanent loading spinner.
+  const broken=await browser.newContext({viewport:{width:1024,height:800}});
+  const bootPage=await broken.newPage();
+  let creates=0;
+  bootPage.on("pageerror",error=>errors.push(String(error)));
+  bootPage.on("request",request=>{
+    if(request.method()==="POST"&&new URL(request.url()).pathname==="/v1/demo/sessions")creates++;
+  });
+  await bootPage.route("**/v1/demo/me",route=>route.fulfill({
+    status:503,contentType:"application/json",
+    body:JSON.stringify({error:{code:"TEMPORARY_UNAVAILABLE"}})
+  }));
+  await bootPage.goto(base,{waitUntil:"domcontentloaded",timeout});
+  await bootPage.getByRole("button",{name:"Reintentar conexión"}).waitFor({timeout});
+  assert.equal(creates,0,"Transient 503 must not silently create a new guest workspace");
+  await bootPage.unroute("**/v1/demo/me");
+  await bootPage.getByRole("button",{name:"Reintentar conexión"}).click();
+  await bootPage.locator(".sideBottom strong").waitFor({timeout});
+  await bootPage.locator(".graphNode").first().waitFor({timeout});
+  assert.equal(creates,1,"Explicit retry should create exactly one isolated demo guest");
+  console.log("PASS boot transient 503 shows retry and recovers without silent workspace churn");
+  await broken.close();
   assert.deepEqual(errors,[],"Browser application must not produce uncaught runtime exceptions");
   await isolated.close();await context.close();
   console.log("PRODUCT_SLICE2_BROWSER_E2E_PASS");
