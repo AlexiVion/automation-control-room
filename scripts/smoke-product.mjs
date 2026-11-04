@@ -32,6 +32,17 @@ log("API + PostgreSQL ready");
 const html=await fetch(web+"/").then(r=>r.text());
 assert.match(html,/Automation Control Room|Automatizaciones verificables/);
 log("Next.js web route rendered");
+const proxiedResponse=await fetch(web+"/v1/demo/sessions",{
+  method:"POST",headers:{"Origin":origin}
+});
+assert.equal(proxiedResponse.status,201,"Next.js same-origin API proxy must preserve Origin and status");
+const proxiedBody=await proxiedResponse.json();
+const proxiedCookie=proxiedResponse.headers.get("set-cookie")?.split(";")[0];
+assert.ok(proxiedCookie?.startsWith("acr_demo_session="));
+const proxiedMe=await fetch(web+"/v1/demo/me",{headers:{Cookie:proxiedCookie}});
+assert.equal(proxiedMe.status,200,"Browser cookie must pass through Next.js reverse proxy");
+assert.equal((await proxiedMe.json()).workspaceId,proxiedBody.workspaceId);
+log("Next.js same-origin API proxy forwards session cookie");
 const created=await json("/v1/demo/sessions",{method:"POST",expected:201});
 const cookie=created.response.headers.get("set-cookie")?.split(";")[0];
 assert.ok(cookie?.startsWith("acr_demo_session="));
