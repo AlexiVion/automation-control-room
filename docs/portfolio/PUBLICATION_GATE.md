@@ -14,8 +14,8 @@
 
 ## Updated evidence and specific blocker — 2026-11-04
 
-- [x] PR #14 UX code CI [#41894674451](https://github.com/AlexiVion/automation-control-room/actions/runs/41894674451) completed successfully at `dc4f0f13...`; the UX branch remains a draft, and Windows clean-clone verification is still pending.
-- [ ] **Verify the provenance of the repository LICENSE.** Its Appendix boilerplate currently includes `Copyright 2026 Sim Studio, Inc.`. This may be valid retained attribution or a copied example; do not change or remove it until the actual origin, copyright and NOTICE obligations are established.
+- [x] PR #14 UX code CI [#41894674451](https://github.com/AlexiVion/automation-control-room/actions/runs/41894674451) completed successfully at `dc4f0f13...`. **Owner-provided Windows new-clone acceptance also passed at the same exact head** on 2026-11-04: isolated Compose project `acrverify1104164028`, freshly created Postgres volume, web `http://localhost:3301`, `PRODUCT_SLICE1_E2E_PASS`, history 4/4, canvas 5/5, `SLICE2_WINDOWS_PASS`, `ACR_CLEAN_CLONE_PASS`. Docker reused cached Node layers, so this is a clean source/DB/environment check, not a cache-free build. The UX PR remains draft/unmerged.
+- [ ] **Verify license/code provenance:** the repository's `LICENSE`, after trimming leading/trailing whitespace, exactly matches the [Sim Studio upstream LICENSE](https://github.com/simstudioai/sim/blob/main/LICENSE), including `Copyright 2026 Sim Studio, Inc.`. This proves matching license text, **not** that ACR application code was copied. Confirm code/asset origins, ownership, copyright and NOTICE obligations before changing or removing attribution.
 - [ ] Confirm third-party dependency advisories/licenses. The existing `contracts.yml` runs `npm ci --no-audit` and does not amount to an advisory or license-compliance scan.
 
 See the [source-grounded publication readiness review](READINESS_AUDIT_20261104.md) for an isolated Windows fresh-clone procedure and a precise separation of passed tests from remaining release requirements.
@@ -23,7 +23,7 @@ See the [source-grounded publication readiness review](READINESS_AUDIT_20261104.
 
 - [ ] **Default branch mismatch:** `main` still has only an old architecture-phase README and says there is no runnable app. Decide and approve a safe stacked-PR merge strategy after final review; **do not merge automatically**.
 - [ ] **Real screenshots:** select and preserve three approved screenshots (finished canvas, scoped history, CRM) from the real product or CI Chromium artifact. No AI-generated UI mockups or stock imagery as execution evidence.
-- [ ] **Clean clone:** test the published README commands from a new clone with no cached container images, reused node_modules or preexisting Docker volumes. GitHub CI does check clean source checkout, but that is **not** a proof of a first-time Windows installation.
+- [x] **Clean clone functional acceptance:** a new Windows checkout of the UX branch passed the launcher and real smoke/unit tests with a new Compose project and Postgres volume (see above). Docker layer cache was reused; a no-cache build was not performed. This validates the UX branch, **not yet the future merged default `main`**.
 - [ ] **Trust review:** full secret/static configuration scan (including docs), dependency warnings, basic public-facing accessibility review and license/provenance audit. Local-only dev credentials must never be treated as production-safe.
 - [ ] **Video:** 60–90 second continuous, synthetic-only live demo following [storyboard](DEMO_STORYBOARD.md), or explicitly choose screenshots-only for the first post.
 - [ ] **LinkedIn assets:** approve accurate caption/Projects blurb and links only after GitHub's default branch shows the verified code.
