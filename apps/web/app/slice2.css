@@ -519,3 +519,27 @@
 .initialRecovery{display:flex;flex-direction:column;gap:15px;align-items:center;max-width:360px;margin:auto}
 .initialRecovery p{margin:0;color:#52627d;font-size:13px;line-height:1.6}
 .initialRecovery button{min-height:44px}
+
+/* Code-audit finding: faint 9–11px text was below 4.5:1 on white surfaces.
+   Keep existing composition, increase contrast for meaningful UI copy. */
+.slice2Heading p{color:#53657f}
+.slice2Controls .choose p{color:#53657f}
+.slice2Metrics .metricItem span{color:#59677e;font-size:10px}
+.workflowTitle p{color:#586983}
+.graphNode small{color:#53657d}
+.graphNodeFooter{color:#5d6d85;font-size:10px}
+.nodeStateLabel{color:#5a6b84;font-size:10px}
+.canvasMinimap span{color:#52637d;font-size:10px}
+.canvasHintKey{color:#52637d}
+.workflowFoot,.workflowFoot code{color:#566781;font-size:10px}
+.slice2InspectorHead>span,.slice2InspectorTitle p,
+.inspectorData>div>span:not(.statePill),.slice2InspectorEmpty{color:#586780;font-size:11px}
+.historyPanelHead p,.historyDetailHeader p{color:#53657f}
+.historyFilters label{color:#5b6a80;font-size:11px}
+.historyRowMeta,.historyRowFooter{color:#5a6b84;font-size:10px}
+.historyEmpty,.historyLoading{color:#566982}
+.historyDetailStats span,.historyDetailBottom>span,.sectionOverline{color:#586c88;font-size:10px}
+.elegantTimeline time,.elegantTimeline p{color:#586b85}
+.slice2CRM .tableScroll th{color:#5a6c85;font-size:10px}
+.slice2Empty{color:#556b83}
+.slice2Content footer{color:#596d85;font-size:11px}
