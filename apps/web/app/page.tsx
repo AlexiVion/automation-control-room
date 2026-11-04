@@ -38,7 +38,7 @@ const statusOptions=[
 ] as const;
 const terminal=new Set(["completed","cancelled","failed","needs_review"]);
 const humanError:Record<string,string>={
-  SESSION_REQUIRED:"La sesión venció. Recargá la página para crear otra sesión demo.",
+  SESSION_REQUIRED:"La sesión venció. Iniciá un nuevo espacio demo para continuar, sin compartir los datos anteriores.",
   DEMO_QUOTA_REACHED:"Se alcanzó el límite de 5 ejecuciones. La sesión tiene un presupuesto diario.",
   APPROVAL_ALREADY_DECIDED_OR_EXPIRED:"Esta aprobación ya fue decidida o caducó. El estado se volvió a consultar.",
   CSRF_REQUIRED:"No se pudo validar la sesión. Recargá la página.",
@@ -346,9 +346,9 @@ export default function Dashboard(){
         <button className={screen==="demo"?"navItem current":"navItem"} aria-current={screen==="demo"?"page":undefined} title="Demo interactiva" onClick={()=>navigation("demo")}>
           <span>◫</span> Demo interactiva</button>
         <button className={screen==="activity"?"navItem current":"navItem"} aria-current={screen==="activity"?"page":undefined} title="Historial de ejecuciones" onClick={()=>navigation("activity")}>
-          <span>◷</span> Historial <small>{historyTotal}</small></button>
+          <span>◷</span> Historial <small>{sessionExpired?"—":historyTotal}</small></button>
         <button className={screen==="crm"?"navItem current":"navItem"} aria-current={screen==="crm"?"page":undefined} title="CRM ficticio" onClick={()=>navigation("crm")}>
-          <span>▤</span> CRM ficticio <small>{crm.length}</small></button>
+          <span>▤</span> CRM ficticio <small>{sessionExpired?"—":crm.length}</small></button>
       </nav>
       <div className="sideBottom"><span className="sidebarDot"/> Sesión local aislada
         <p>Espacio demo: <strong title="Identificador abreviado del workspace">
