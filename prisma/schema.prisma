@@ -3,7 +3,9 @@ generator client {
   output = "../generated/product"
   moduleFormat = "esm"
 }
-datasource db { provider = "postgresql" }
+datasource db {
+  provider = "postgresql"
+}
 
 model DemoWorkspace {
   id          String @id @db.Uuid
