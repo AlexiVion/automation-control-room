@@ -80,3 +80,8 @@ jobs:
         run: npm run typecheck:gate4e
       - name: Test isolated workspaces, atomic quotas and expiry against PostgreSQL
         run: npm run test:gate4e
+      - name: Verify full one-command Docker Compose validation
+        shell: bash
+        run: |
+          trap 'docker compose -f ops/compose/validation.yml down -v --remove-orphans' EXIT
+          docker compose -f ops/compose/validation.yml up --abort-on-container-exit --exit-code-from verifier
