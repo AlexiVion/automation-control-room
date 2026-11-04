@@ -72,3 +72,21 @@ Start-Process "http://localhost:3000"
 ```
 
 No ejecutar esto en producción. [Límites y pruebas](docs/phase5/SLICE1.md).
+
+
+## Phase 5 Slice 2 — Durable execution explorer
+
+The local demo now has **PostgreSQL-backed execution history**, status filters, signed cursor pagination and reloadable deep links; a **truthful CRM attempt/retry model** (with forward-only migration preserving previous demo data); and a **zoomable, pannable, read-only workflow canvas** rendering the immutable published graph, both branches and persisted state. The CRM links back to the exact run that wrote it.
+
+- [Slice 2 implementation & validation](docs/phase5/SLICE2.md)
+- [Single-image Windows PowerShell runner](scripts/windows-start-slice2.ps1)
+- [PR #10: Slice 2](https://github.com/AlexiVion/automation-control-room/pull/10)
+- [CI Browser QA](https://github.com/AlexiVion/automation-control-room/actions/runs/41868755030) — Chromium desktop/mobile, audit after reload, approval and CRM (PASS on source commit `c501e689`)
+
+From the existing Windows checkout on the Slice 2 branch:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows-start-slice2.ps1 -Port 3300
+```
+
+**Important:** localhost-only synthetic demo; not an editable editor, hosted public app, real AI model or third-party workflow integration. The previous Phase 4 draft and Slice 1 draft PRs have not been merged into `main`.
