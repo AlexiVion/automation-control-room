@@ -1,5 +1,8 @@
 # Gate 4F — Aprobación de arquitectura y criterios de release
 
+> **DOCUMENTO HISTÓRICO — Fase 4, previo a la implementación.** La tabla que sigue refleja el estado de planificación en aquella fase; **no describe el estado actual** del proyecto. La demo local de Fase 5 / Slice 2 ya cuenta con frontend, API, worker y pruebas E2E. Para la publicación del portfolio consultá el [gate actual de GitHub/LinkedIn](../portfolio/PUBLICATION_GATE.md), la [auditoría de preparación](../portfolio/READINESS_AUDIT_20261104.md) y el [Slice 2 verificado](../phase5/SLICE2.md).
+
+
 > **Propuesta, no aprobada.** Las fases 4A–4F definen la arquitectura; la fase 5 construirá web, API, worker y validación de producto. Un CI de componentes PASS no equivale a una demo pública funcional.
 
 ## Evidencia: dos niveles distintos

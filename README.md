@@ -8,6 +8,18 @@ Automation Control Room is an open-source technical project exploring durable bu
 
 **[View Slice 2 code](https://github.com/AlexiVion/automation-control-room/tree/feat/phase5-slice2-ux-history-20261104)** · **[Verified CI run](https://github.com/AlexiVion/automation-control-room/actions/runs/41877978061)** · **[Architecture and acceptance details](docs/phase5/SLICE2.md)** · **[Portfolio-first direction](docs/PORTFOLIO_FIRST.md)**
 
+## Portfolio walkthrough
+
+The shortest way to understand this repository is to follow one **real local run**:
+
+```text
+Synthetic lead → deterministic classification → conditional routing
+               → human approval → independent worker
+               → synthetic CRM write → persistent history & audit
+```
+
+The repository includes a [75–90 second recording storyboard](docs/portfolio/DEMO_STORYBOARD.md), an [architecture diagram with technical boundaries](docs/portfolio/ARCHITECTURE_AT_A_GLANCE.md), and the [GitHub/LinkedIn publication checklist](docs/portfolio/PUBLICATION_GATE.md). **Screenshots and video are still being curated**; no hosted demo is being claimed.
+
 ## What you can demonstrate today
 
 - **Real execution lifecycle:** choose a synthetic lead → classify with an explicitly labelled deterministic fixture → evaluate a condition → approve/reject a proposed CRM write → let an independent worker complete the run.
@@ -53,7 +65,7 @@ Open **http://localhost:3300**. The script builds one shared image, tags the pro
 
 Expected local markers: `PRODUCT_SLICE1_E2E_PASS` and `SLICE2_WINDOWS_PASS`.
 
-For project test matrices, Compose details, guest-data limitations and QA evidence, see [Slice 1](docs/phase5/SLICE1.md), [Slice 2](docs/phase5/SLICE2.md) and the [release gates](docs/quality/RELEASE_GATES.md). The previously recorded [full CI run](https://github.com/AlexiVion/automation-control-room/actions/runs/41877978061) also exercised real product Compose and a Chromium desktop/mobile journey.
+For project test matrices, Compose details, guest-data limitations and QA evidence, see [Slice 1](docs/phase5/SLICE1.md), [Slice 2](docs/phase5/SLICE2.md) and the [portfolio publication gate](docs/portfolio/PUBLICATION_GATE.md). The [Phase 4 release gates](docs/quality/RELEASE_GATES.md) are historical and do not describe the current runnable demo. The previously recorded [full CI run](https://github.com/AlexiVion/automation-control-room/actions/runs/41877978061) also exercised real product Compose and a Chromium desktop/mobile journey.
 
 ## Roadmap: portfolio first, product-ready by design
 
@@ -69,7 +81,7 @@ See [portfolio scope and decision gates](docs/PORTFOLIO_FIRST.md) and the [follo
 - [Architecture blueprint](docs/architecture/ARCHITECTURE.md) · [Domain and state machine](docs/architecture/DOMAIN_MODEL.md) · [Execution semantics](docs/architecture/EXECUTION_SEMANTICS.md)
 - [Executable Zod contracts](packages/contracts/README.md) · [OpenAPI 3.1](docs/contracts/openapi.yaml) · [Connector SDK proposal](docs/contracts/CONNECTOR_SDK.md)
 - [Threat model](docs/security/THREAT_MODEL.md) · [Security controls and known gaps](docs/security/SECURITY_CONTROLS.md)
-- [Phase 4 baseline](docs/PHASE4_BASELINE.md) · [UX acceptance script](docs/ux/DEMO_ACCEPTANCE_SCRIPT.md) · [Release gates](docs/quality/RELEASE_GATES.md)
+- [Phase 4 baseline](docs/PHASE4_BASELINE.md) · [UX acceptance script](docs/ux/DEMO_ACCEPTANCE_SCRIPT.md) · [Portfolio readiness audit](docs/portfolio/READINESS_AUDIT_20261104.md)
 - [Operational runbook](docs/operations/DEPLOYMENT_RUNBOOK.md) · [Contributing](CONTRIBUTING.md)
 
-**Project boundary:** independent of ClickDialog; no shared customer data, infrastructure, credentials or billing systems. Original work is licensed under [Apache-2.0](LICENSE); third-party dependencies retain their own licenses.
+**Project boundary:** independent of ClickDialog; no shared customer data, infrastructure, credentials or billing systems. The repository includes an [Apache-2.0 LICENSE](LICENSE). Copyright attribution and third-party dependency/asset provenance remain under [publication review](docs/portfolio/READINESS_AUDIT_20261104.md); no claim of completed license compliance is made.

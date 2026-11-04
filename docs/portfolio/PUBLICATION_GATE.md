@@ -1,0 +1,51 @@
+# GitHub + LinkedIn portfolio release gate
+
+**Status: NOT YET PUBLISH-READY AS A DEFAULT-BRANCH LINK.** This is a portfolio publication checklist, **not a product/production release gate**.
+
+## Verified at review — November 4, 2026
+
+- [x] Public repository `AlexiVion/automation-control-room` exists.
+- [x] Branch `feat/phase5-slice2-ux-history-20261104` contains a runnable local app with Fastify, Next.js, PostgreSQL and a background worker.
+- [x] Owner-provided Windows evidence: `SLICE2_FINAL_WINDOWS_PASS` at `0951e244...`, preserving existing demo DB.
+- [x] Last checked branch CI [#41884629235](https://github.com/AlexiVion/automation-control-room/actions/runs/41884629235): **SUCCESS** (documentation-only update after the verified app).
+- [x] Reviewed README **25 relative/external links**: no missing repository-relative target in the current branch tree.
+- [x] Apache-2.0 LICENSE exists, and the Compose configuration labels its static database/CSRF values as **development-only**, bound to localhost.
+- [x] No tracked `.env`, `.pem`, `.p12`, `.pfx` or private-key file was identified by the **filename-only** tree scan. **This is not a comprehensive secret scan or license compliance audit.**
+
+## Updated evidence and specific blocker — 2026-11-04
+
+- [x] PR #14 UX code CI [#41894674451](https://github.com/AlexiVion/automation-control-room/actions/runs/41894674451) completed successfully at `dc4f0f13...`. **Owner-provided Windows new-clone acceptance also passed at the same exact head** on 2026-11-04: isolated Compose project `acrverify1104164028`, freshly created Postgres volume, web `http://localhost:3301`, `PRODUCT_SLICE1_E2E_PASS`, history 4/4, canvas 5/5, `SLICE2_WINDOWS_PASS`, `ACR_CLEAN_CLONE_PASS`. Docker reused cached Node layers, so this is a clean source/DB/environment check, not a cache-free build. The UX PR remains draft/unmerged.
+- [ ] **Verify license/code provenance:** the repository's `LICENSE`, after trimming leading/trailing whitespace, exactly matches the [Sim Studio upstream LICENSE](https://github.com/simstudioai/sim/blob/main/LICENSE), including `Copyright 2026 Sim Studio, Inc.`. This proves matching license text, **not** that ACR application code was copied. Confirm code/asset origins, ownership, copyright and NOTICE obligations before changing or removing attribution.
+- [x] **Preliminary dependency advisory scan (owner Windows, 2026-11-04):** `npm audit --json` executed inside the isolated API container returned `NPM_AUDIT_EXIT=0` and **0 low / 0 moderate / 0 high / 0 critical** advisories. Report saved locally at `C:\Users\alexi\AppData\Local\Temp\ACR-dependency-audit.json` (not uploaded/independently inspected). This is time-specific, not an attestation of all future package versions.
+- [x] **Preliminary tracked secret-pattern scan (owner Windows, 2026-11-04):** `git grep -IlE` with patterns for PEM private key headers, GitHub classic/fine-grained tokens and OpenAI-style keys returned **0 flagged tracked files**. This is not a full entropy/history or credential scan; known local-only demonstration secrets are intentionally present in Compose.
+- [ ] **Still open:** check third-party license/asset provenance, remaining secret formats/history and correct treatment of the upstream `LICENSE` attribution. Existing CI runs `npm ci --no-audit`; the owner-run advisory scan is outside CI.
+
+See the [source-grounded publication readiness review](READINESS_AUDIT_20261104.md) for an isolated Windows fresh-clone procedure and a precise separation of passed tests from remaining release requirements.
+## Must do before pointing external recruiters to the GitHub repository
+
+- [ ] **Default branch mismatch:** `main` still has only an old architecture-phase README and says there is no runnable app. Decide and approve a safe stacked-PR merge strategy after final review; **do not merge automatically**.
+- [ ] **Real screenshots:** select and preserve three approved screenshots (finished canvas, scoped history, CRM) from the real product or CI Chromium artifact. No AI-generated UI mockups or stock imagery as execution evidence.
+- [x] **Clean clone functional acceptance:** a new Windows checkout of the UX branch passed the launcher and real smoke/unit tests with a new Compose project and Postgres volume (see above). Docker layer cache was reused; a no-cache build was not performed. This validates the UX branch, **not yet the future merged default `main`**.
+- [ ] **Trust review (partially complete):** owner-reported npm audit and tracked secret-pattern scan both PASS; full history/entropy/provider-token coverage, dependency licensing/asset origins and repository LICENSE provenance still require explicit review. Local-only dev credentials must never be treated as production-safe.
+- [ ] **Video:** 60–90 second continuous, synthetic-only live demo following [storyboard](DEMO_STORYBOARD.md), or explicitly choose screenshots-only for the first post.
+- [ ] **LinkedIn assets:** approve accurate caption/Projects blurb and links only after GitHub's default branch shows the verified code.
+- [ ] **Owner approval:** decide when to merge and publish; no unauthorised deployment or public hosting.
+
+## Packaging notes
+
+- `docs/portfolio/ARCHITECTURE_AT_A_GLANCE.md` contains a **source-based Mermaid diagram**, so the architecture is inspectable and no image license is required.
+- Link to **stable repository paths and verified CI**, not temporary seven-day GitHub artifact downloads.
+- Distinguish code visibility (public repo) from service accessibility (localhost only).
+- When no hosted demo is available, show the workflow with screenshots/video and clear Docker reproduction instructions.
+- Commercial billing, real LLM, general graph editing and third-party connectors are explicitly **not** portfolio publication blockers.
+
+## Final acceptance checklist
+
+**An engineer arriving from LinkedIn should be able to:**
+1. Read accurate project scope and stack within 30 seconds of opening the default README.
+2. See authentic visual evidence of execution and the architectural boundaries.
+3. Clone the published default branch and run a deterministic demo locally.
+4. Trace at least one approval and CRM write through the persisted event history.
+5. Understand the limitations and find passing CI evidence.
+
+This gate is independent of any future decision to build a commercial product.
