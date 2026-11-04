@@ -59,4 +59,10 @@ Los escenarios y presupuestos corresponden a propuestas de Gate 4A. No pueden da
 - OpenAPI YAML must parse without duplicate mapping keys, have required operations and resolve all local `$ref` components.
 - `npm run contracts:jsonschema` generates structural JSON Schema; `npm run contracts:check` verifies the committed snapshot.
 
-**Not yet verified:** tests/CI execution, schema snapshot drift, integration with actual API/worker, PostgreSQL/pg-boss rollback and remote effect idempotency. These require proof and must not be reported PASS based on document/code existence.
+**Verified for the isolated contracts:** 24 unit/contract tests and JSON Schema drift check pass [in CI](https://github.com/AlexiVion/automation-control-room/actions/runs/41836485254). These **do not** constitute API/worker integration or production deployment tests.
+
+## Gate 4D isolated reliability evidence (2026-11-04)
+
+[CI PASS](https://github.com/AlexiVion/automation-control-room/actions/runs/41836485254): **9 tests against PostgreSQL 17** using pinned Prisma 7.10.1 and pg-boss 12.38.0. Validated: atomic enqueue/rollback, same-source dedup, concurrent approval, atomic approval resume/rollback, backlog recovery, SIGKILL of claimed worker followed by local CRM upsert without duplication, and explicit `needs_review` for an uncertain external result.
+
+This evidence supports the **queue adapter feasibility**, **not** a fully implemented product. Full workflow engine, real webhook-HMAC ingress, waiting approval UX, external HTTP connector, provider reconciliation, SSE, guest isolation and product-level acceptance cases remain unimplemented. Neither exactly-once delivery nor remote side-effect exactly-once is claimed.

@@ -4,7 +4,10 @@ on:
     paths:
       - 'packages/contracts/**'
       - 'docs/contracts/**'
-      - 'spikes/gate4d/**'
+      - 'spikes/gate4d/src/**'
+      - 'spikes/gate4d/test/**'
+      - 'spikes/gate4d/prisma/**'
+      - 'spikes/gate4d/tsconfig.json'
       - 'prisma7.config.ts'
       - 'package.json'
       - 'package-lock.json'
