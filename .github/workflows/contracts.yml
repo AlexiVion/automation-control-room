@@ -84,6 +84,17 @@ jobs:
         run: npm run typecheck:gate4e
       - name: Test isolated workspaces, atomic quotas and expiry against PostgreSQL
         run: npm run test:gate4e
+      - name: Create clean PostgreSQL database for product migrations
+        shell: bash
+        run: |
+          node --input-type=module - <<'NODE'
+          import { Client } from 'pg';
+          const client = new Client({ connectionString: process.env.DATABASE_URL });
+          await client.connect();
+          await client.query('CREATE DATABASE acr_product_test');
+          await client.end();
+          NODE
+          echo "DATABASE_URL=postgresql://acr:acr_test@127.0.0.1:5432/acr_product_test" >> "$GITHUB_ENV"
       - name: Generate product Prisma client
         run: npx prisma generate --config prisma.product.config.ts
       - name: Apply versioned product migrations to disposable PostgreSQL
