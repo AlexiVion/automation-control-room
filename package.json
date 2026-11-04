@@ -18,7 +18,9 @@
     "typecheck:security": "tsc --noEmit -p packages/security/tsconfig.json",
     "test:security": "vitest run packages/security/test --maxWorkers=1",
     "typecheck:gate4e": "tsc --noEmit -p spikes/gate4e/tsconfig.json",
-    "test:gate4e": "vitest run spikes/gate4e/test --maxWorkers=1"
+    "test:gate4e": "vitest run spikes/gate4e/test --maxWorkers=1",
+    "typecheck:ux": "tsc --noEmit -p packages/ux-contracts/tsconfig.json",
+    "test:ux": "vitest run packages/ux-contracts/test --maxWorkers=1"
   },
   "dependencies": {
     "zod": "4.6.7",

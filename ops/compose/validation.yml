@@ -1,0 +1,54 @@
+# Gate 4F: local validation, not an application deployment.
+# Run: docker compose -f ops/compose/validation.yml up --abort-on-container-exit --exit-code-from verifier
+# Cleanup: docker compose -f ops/compose/validation.yml down -v
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: acr
+      POSTGRES_PASSWORD: acr_test
+      POSTGRES_DB: acr_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acr -d acr_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    tmpfs:
+      - /var/lib/postgresql/data
+    restart: "no"
+  verifier:
+    image: node:22-bookworm
+    network_mode: "service:postgres"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /workspace
+    volumes:
+      - ../../:/workspace:ro
+      - gate4f_node_modules:/workspace/node_modules
+      - gate4f_prisma_generated:/workspace/spikes/gate4d/generated
+    environment:
+      CI: "true"
+      DATABASE_URL: postgresql://acr:acr_test@127.0.0.1:5432/acr_test
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        npm ci --ignore-scripts --no-audit --no-fund
+        npm run typecheck
+        npm run test:contracts
+        npm run typecheck:security
+        npm run test:security
+        npm run typecheck:ux
+        npm run test:ux
+        npm run contracts:check
+        npx prisma generate --config prisma7.config.ts
+        npx prisma db push --config prisma7.config.ts --accept-data-loss
+        npm run typecheck:gate4d
+        npm run test:gate4d
+        npm run typecheck:gate4e
+        npm run test:gate4e
+    restart: "no"
+volumes:
+  gate4f_node_modules:
+  gate4f_prisma_generated:

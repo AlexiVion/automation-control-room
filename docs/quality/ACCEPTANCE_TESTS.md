@@ -87,3 +87,19 @@ La evidencia real se añadirá en [Security Evidence](../security/SECURITY_EVIDE
 [GitHub Actions #41840871229](https://github.com/AlexiVion/automation-control-room/actions/runs/41840871229): **PASS, 64 tests totales**, incluidos 27 negativos/positivos de primitivas de seguridad y 4 contra PostgreSQL real de guest workspace, cuota atómica, TTL y cleanup. Consultar [evidence ledger](../security/SECURITY_EVIDENCE.md).
 
 **No son PASS todavía los AT-04/05 (endpoint firmado real), AT-16 (HTTP connector seguro real), AT-17/21 (API intersession y SSE reales), AT-22 (middleware CSRF real), AT-23 (cupo global/antiabuso), ni AT-30 (cleanup operativo).** Las pruebas de unidad/DB aislada acreditan una implementación parcial, no los flujos completos del producto.
+
+## Gate 4F — Acceptance targets (proposed)
+
+| ID | Requisito | Evidencia exigida |
+|---|---|---|
+| UX-01 | UI run state derives from persisted execution snapshot | Unit test de projector + E2E futuro |
+| UX-02 | SSE dedup, gap y cross-execution se manejan sin inventar eventos | Unit test de projector; SSE API real pendiente |
+| UX-03 | POST demo/event 202 no indica completed | Pure reducer test |
+| UX-04 | Lead high permite aprobación/reintento/rechazo; medium/low termina sin aprobación | Guion y tests E2E futuros |
+| UX-05 | Wireframes muestran loading/empty/409/422/429/expired/needs_review | Revisión UX / screenshots futuros |
+| OPS-01 | Compose de validación usa Postgres 17, Node 22, DB sin puerto host y fuente montada read-only | `docker compose config --quiet` en CI |
+| OPS-02 | Validación de un checkout limpio mediante comando Compose completo | **Pendiente de ejecutar** |
+| OPS-03 | Bootstrap producto web/API/worker y E2E real | **Fase 5, no implementado** |
+| OPS-04 | Backup/restauración y healthchecks verificados | **Fase 5, no implementado** |
+
+No convertir pruebas aisladas Gate 4D/4E ni el modelo de UX en afirmaciones de lanzamiento. [Release gates](RELEASE_GATES.md) detalla la barrera para demo pública.
