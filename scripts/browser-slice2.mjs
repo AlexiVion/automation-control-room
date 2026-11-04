@@ -81,6 +81,26 @@ try {
     .evaluate(el=>document.activeElement===el);
   assert.equal(returned,true,"Escape must return focus to the toolbar");
   console.log("PASS fullscreen inspection, real CRM node events, keyboard Escape and focus restoration");
+  // The owner's screenshots came from a ~1180px desktop. Focus mode must
+  // meaningfully increase graph width there as well, not shrink it for a sidebar.
+  await page.setViewportSize({width:1180,height:820});
+  await page.waitForFunction(()=>{
+    const output=document.querySelector(".workflowToolbar output")?.textContent;
+    return output && Number.parseInt(output,10)<100;
+  },null,{timeout});
+  const compactFit=parseInt(await page.locator(".workflowToolbar output").innerText(),10);
+  assert.ok(compactFit>=75,"1180px studio should remain legible, got "+compactFit+"%");
+  await page.getByRole("button",{name:"Ampliar diagrama"}).click();
+  const compactDialog=page.getByRole("dialog",{name:"Vista ampliada del workflow"});
+  await compactDialog.waitFor({timeout});
+  const compactBounds=await compactDialog.locator(".workflowViewport").boundingBox();
+  assert.ok(compactBounds&&compactBounds.width>=1000,
+    "At 1180px focus must use full-width graph with the audit beneath it");
+  await page.screenshot({path:path.join(evidence,"02c-focus-at-1180px.png"),fullPage:false});
+  await page.keyboard.press("Escape");
+  await compactDialog.waitFor({state:"hidden",timeout});
+  await page.setViewportSize({width:1440,height:900});
+  console.log("PASS 1180px canvas readable and focus graph expanded beyond 1000px");
   console.log("PASS browser approved happy path: one CRM attempt, zero retries");
 
   await page.getByRole("button",{name:/Historial/}).click();
