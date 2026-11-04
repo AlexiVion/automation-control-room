@@ -8,6 +8,18 @@ Automation Control Room is an open-source technical project exploring durable bu
 
 **[View Slice 2 code](https://github.com/AlexiVion/automation-control-room/tree/feat/phase5-slice2-ux-history-20261104)** · **[Verified CI run](https://github.com/AlexiVion/automation-control-room/actions/runs/41877978061)** · **[Architecture and acceptance details](docs/phase5/SLICE2.md)** · **[Portfolio-first direction](docs/PORTFOLIO_FIRST.md)**
 
+## Portfolio walkthrough
+
+The shortest way to understand this repository is to follow one **real local run**:
+
+```text
+Synthetic lead → deterministic classification → conditional routing
+               → human approval → independent worker
+               → synthetic CRM write → persistent history & audit
+```
+
+The repository includes a [75–90 second recording storyboard](docs/portfolio/DEMO_STORYBOARD.md), an [architecture diagram with technical boundaries](docs/portfolio/ARCHITECTURE_AT_A_GLANCE.md), and the [GitHub/LinkedIn publication checklist](docs/portfolio/PUBLICATION_GATE.md). **Screenshots and video are still being curated**; no hosted demo is being claimed.
+
 ## What you can demonstrate today
 
 - **Real execution lifecycle:** choose a synthetic lead → classify with an explicitly labelled deterministic fixture → evaluate a condition → approve/reject a proposed CRM write → let an independent worker complete the run.
