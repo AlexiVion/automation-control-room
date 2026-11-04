@@ -9,6 +9,9 @@ on:
       - 'prisma.product.config.ts'
       - 'scripts/smoke-product.mjs'
       - 'scripts/browser-slice2.mjs'
+      - 'scripts/verify-portfolio-evidence.mjs'
+      - 'docs/portfolio/media/**'
+      - 'docs/portfolio/ASSET_PROVENANCE.md'
       - 'ops/compose/product.yml'
       - 'ops/compose/Dockerfile.product'
       - 'packages/ux-contracts/**'
@@ -55,6 +58,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Verify immutable portfolio CI screenshots and license metadata
+        run: node scripts/verify-portfolio-evidence.mjs
       - name: Install from committed lockfile
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Typecheck contracts
