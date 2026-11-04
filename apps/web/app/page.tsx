@@ -262,7 +262,10 @@ export default function Dashboard(){
           <span>▤</span> CRM ficticio <small>{crm.length}</small></button>
       </nav>
       <div className="sideBottom"><span className="sidebarDot"/> Sesión local aislada
-        <p>PostgreSQL · Worker independiente · Sin LLM de pago.</p></div>
+        <p>Espacio demo: <strong title="Identificador abreviado del workspace">
+          {session?session.workspaceId.slice(0,8):"Cargando…"}</strong></p>
+        <p>Los datos del historial y CRM pertenecen únicamente a este espacio. Una sesión distinta comienza vacía.</p>
+      </div>
     </aside>
     <main className="main">
       <header className="topbar">

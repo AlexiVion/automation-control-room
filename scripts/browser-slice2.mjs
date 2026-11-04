@@ -21,6 +21,14 @@ try {
   assert.equal(await page.locator(".workflowPanel .graphNode").count(),7);
   assert.equal(await page.locator(".workflowWires .graphWire").count(),6);
   const before=await page.locator(".workflowToolbar output").innerText();
+  const defaultFit=parseInt(before,10);
+  assert.ok(defaultFit>=85,
+    "The default 1440px desktop fit must be readable, got "+before);
+  const studioColumns=await page.locator(".slice2Studio").evaluate(el=>getComputedStyle(el).gridTemplateColumns);
+  assert.equal(studioColumns.split(" ").length,1,"Canvas must occupy the full studio width");
+  const originalWorkspace=await page.locator(".sideBottom strong").innerText();
+  assert.match(originalWorkspace,/^[a-f0-9]{8}$/i);
+  await page.screenshot({path:path.join(evidence,"00-readable-canvas-desktop.png"),fullPage:true});
   await page.getByRole("button",{name:"Acercar diagrama"}).click();
   const after=await page.locator(".workflowToolbar output").innerText();
   assert.notEqual(before,after,"Zoom control must change canvas scale");
@@ -38,7 +46,7 @@ try {
       box.y+box.height > minimap.y;
     assert.equal(collision,false,"Canvas minimap must not cover published node "+(await card.getAttribute("aria-label")));
   }
-  console.log("PASS browser desktop workflow canvas renders real nodes/edges, zoom and unobstructed minimap");
+  console.log("PASS browser full-width canvas fit ≥85%, real edges, zoom and unobstructed minimap");
 
   await page.getByRole("button",{name:/Iniciar automatización/}).click();
   await page.getByRole("heading",{name:"Esta acción necesita tu aprobación"}).waitFor({timeout});
@@ -54,6 +62,25 @@ try {
   assert.match(attempts,/Reintentos\s+0/);
   await page.getByRole("button",{name:/CRM Demo, Completado/}).waitFor({timeout});
   await page.screenshot({path:path.join(evidence,"02-completed-canvas-desktop.png"),fullPage:true});
+  // The professional focus mode is the SAME graph and state. It is keyboard
+  // escapable, keeps node auditing visible, and restores toolbar focus.
+  await page.getByRole("button",{name:"Ampliar diagrama"}).click();
+  const dialog=page.getByRole("dialog",{name:"Vista ampliada del workflow"});
+  await dialog.waitFor({timeout});
+  const focusBounds=await dialog.locator(".workflowViewport").boundingBox();
+  assert.ok(focusBounds&&focusBounds.width>=900&&focusBounds.height>=500,
+    "Focus mode must grant the graph substantial usable space");
+  assert.equal(await dialog.locator(".graphNode").count(),7);
+  await dialog.getByRole("button",{name:/CRM Demo, Completado/}).click();
+  await dialog.getByRole("heading",{name:"CRM Demo"}).waitFor({timeout});
+  await dialog.getByText(/crm.confirmed/).waitFor({timeout});
+  await page.screenshot({path:path.join(evidence,"02b-focus-mode-audit-desktop.png"),fullPage:false});
+  await page.keyboard.press("Escape");
+  await dialog.waitFor({state:"hidden",timeout});
+  const returned=await page.getByRole("button",{name:"Ampliar diagrama"})
+    .evaluate(el=>document.activeElement===el);
+  assert.equal(returned,true,"Escape must return focus to the toolbar");
+  console.log("PASS fullscreen inspection, real CRM node events, keyboard Escape and focus restoration");
   console.log("PASS browser approved happy path: one CRM attempt, zero retries");
 
   await page.getByRole("button",{name:/Historial/}).click();
@@ -65,6 +92,8 @@ try {
   await page.getByRole("heading",{name:"Ejecuciones guardadas"}).waitFor({timeout});
   await page.locator(".historyRow.selected").waitFor({timeout});
   assert.equal((new URL(page.url())).searchParams.get("run"),currentID);
+  assert.equal(await page.locator(".sideBottom strong").innerText(),originalWorkspace,
+    "A browser reload keeps the same guest workspace");
   await page.getByRole("heading",{name:"Detalle de ejecución"}).waitFor({timeout});
   await page.screenshot({path:path.join(evidence,"03-reloadable-history-desktop.png"),fullPage:true});
   console.log("PASS browser durable history remains scoped and selected after page reload");
@@ -85,6 +114,8 @@ try {
   await mobile.goto(base,{waitUntil:"domcontentloaded",timeout});
   await mobile.getByRole("heading",{name:"Tu automatización, paso a paso"}).waitFor({timeout});
   await mobile.locator(".mobileWorkflowNodes .mobileWorkflowNode").first().waitFor({timeout});
+  const otherWorkspace=await mobile.locator(".sideBottom strong").innerText();
+  assert.notEqual(otherWorkspace,originalWorkspace,"Separate profiles require different guest workspace IDs");
   assert.equal(await mobile.locator(".mobileWorkflowNodes .mobileWorkflowNode").count(),7);
   assert.equal(await mobile.locator(".workflowViewport").isVisible(),false);
   const overflow=await mobile.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth+2);

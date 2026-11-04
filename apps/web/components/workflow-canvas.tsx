@@ -67,6 +67,39 @@ export default function WorkflowCanvas({graph,digest,events,execution,selectedNo
   const [offset,setOffset]=useState<Point>({x:0,y:0});
   const [grid,setGrid]=useState(true);
   const [dragging,setDragging]=useState(false);
+  const [focused,setFocused]=useState(false);
+  const panel=useRef<HTMLElement|null>(null);
+  const focusTrigger=useRef<HTMLButtonElement|null>(null);
+  // Fullscreen inspection is an accessible modal view of the same graph,
+  // not a separate copy or a simulated state.
+  useEffect(()=>{
+    if(!focused)return;
+    const previousOverflow=document.body.style.overflow;
+    document.body.style.overflow="hidden";
+    const keyHandler=(event:KeyboardEvent)=>{
+      if(event.key==="Escape"){
+        event.preventDefault();setFocused(false);return;
+      }
+      if(event.key!=="Tab"||!panel.current)return;
+      const tabbables=Array.from(panel.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+      )).filter(e=>e.getClientRects().length>0);
+      if(!tabbables.length)return;
+      const first=tabbables[0],last=tabbables[tabbables.length-1];
+      if(event.shiftKey&&document.activeElement===first){
+        event.preventDefault();last.focus();
+      }else if(!event.shiftKey&&document.activeElement===last){
+        event.preventDefault();first.focus();
+      }
+    };
+    document.addEventListener("keydown",keyHandler);
+    // Opening from the toolbar already places focus on its close control.
+    return()=>{
+      document.body.style.overflow=previousOverflow;
+      document.removeEventListener("keydown",keyHandler);
+      focusTrigger.current?.focus();
+    };
+  },[focused]);
   const fit=useCallback(()=>{
     const element=viewport.current;
     if(!element)return;
@@ -109,7 +142,12 @@ export default function WorkflowCanvas({graph,digest,events,execution,selectedNo
   const nodes=graph?.nodes??[];
   const edges=graph?.edges??[];
   const states=new Map(nodes.map(n=>[n.id,stateOfNode(n.id,execution,events)]));
-  return <section className="workflowPanel" aria-label="Diagrama publicado de la automatización">
+  const selected=nodes.find(n=>n.id===selectedNode);
+  const selectedState=states.get(selectedNode)??"idle";
+  const selectedEvents=events.filter(e=>e.nodeId===selectedNode).slice(-4).reverse();
+  return <section ref={panel} className={"workflowPanel "+(focused?"focusMode":"")}
+    role={focused?"dialog":undefined} aria-modal={focused?true:undefined}
+    aria-label={focused?"Vista ampliada del workflow":"Diagrama publicado de la automatización"}>
     <div className="workflowHeader">
       <div className="workflowTitle"><span className="graphHeaderIcon">◇</span><div>
         <h2>Workflow publicado <span className="graphVersion">v1.0</span></h2>
@@ -120,6 +158,12 @@ export default function WorkflowCanvas({graph,digest,events,execution,selectedNo
         <button type="button" title="Acercar" aria-label="Acercar diagrama" onClick={()=>zoom(.15)}>+</button>
         <button type="button" className="fitButton" onClick={fit} title="Ajustar a pantalla">Ajustar</button>
         <button type="button" aria-pressed={grid} onClick={()=>setGrid(v=>!v)} title="Mostrar u ocultar cuadrícula" aria-label="Cuadrícula">⊞</button>
+        <button ref={focusTrigger} type="button" className="focusButton"
+          aria-label={focused?"Salir de vista ampliada":"Ampliar diagrama"}
+          title={focused?"Cerrar vista ampliada (Esc)":"Vista ampliada"}
+          aria-expanded={focused} onClick={()=>setFocused(f=>!f)}>
+          {focused?"Salir de enfoque":"⛶ Enfocar"}
+        </button>
       </div>
     </div>
     <div className={"workflowViewport "+(grid?"withGrid ":"")+(dragging?"isPanning":"")}
@@ -180,6 +224,28 @@ export default function WorkflowCanvas({graph,digest,events,execution,selectedNo
       </div>
       <div className="canvasHintKey">Arrastrá para moverte · Seleccioná un nodo para inspeccionarlo</div>
     </div>
+    {focused&&<aside className="workflowFocusInspector" aria-label="Inspector de la vista ampliada">
+      <div className="focusInspectorEyebrow">INSPECCIÓN DEL NODO</div>
+      <h3>{selected? idFor(selected.id)[0]:"Seleccioná un nodo"}</h3>
+      <p className="focusInspectorDescription">{selected? idFor(selected.id)[1]:""}</p>
+      <div className={"focusInspectorStatus status-"+selectedState}>
+        <span className="graphStateDot"/>{statusWords[selectedState]}
+      </div>
+      <dl className="focusInspectorFacts">
+        <div><dt>Identificador</dt><dd>{selectedNode}</dd></div>
+        <div><dt>Tipo</dt><dd>{selected?.type??"—"}</dd></div>
+        <div><dt>Eventos de este nodo</dt><dd>{events.filter(e=>e.nodeId===selectedNode).length}</dd></div>
+        <div><dt>Estado ejecución</dt><dd>{execution?.status??"Sin iniciar"}</dd></div>
+      </dl>
+      <div className="focusInspectorEyebrow">ÚLTIMOS EVENTOS</div>
+      {selectedEvents.length?<ol className="focusEventList">
+        {selectedEvents.map(e=><li key={e.sequence}>
+          <strong>#{e.sequence} · {e.eventType}</strong>
+          <span>{e.message}</span>
+        </li>)}
+      </ol>:<p className="focusInspectorEmpty">Este nodo todavía no tiene eventos persistidos.</p>}
+      <div className="focusInspectorFooter">Solo lectura · datos persistidos en PostgreSQL</div>
+    </aside>}
     <div className="mobileWorkflowNodes" aria-label="Lista de pasos del workflow">
       {nodes.map(node=>{
         const state=states.get(node.id)??"idle";

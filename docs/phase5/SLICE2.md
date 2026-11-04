@@ -54,3 +54,20 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows-start-slic
 This single-image Docker build, four service tags, forward-only migrator, live HTTP smoke and cursor/canvas tests preserve the existing PostgreSQL volume. It prints `SLICE2_WINDOWS_PASS` only when all checks succeed.
 
 Remaining advanced product work (redacted JSON export, event cursor replay, broader Playwright/a11y, editable workflow UI) is tracked separately in [Slice 3 #11](https://github.com/AlexiVion/automation-control-room/issues/11).
+
+## Canvas readability closure — Phase 5 Slice 2 (November 4, 2026)
+
+**Problem observed from Windows screenshots:** the desktop graph only occupied a narrow column beside the inspector and fitted at approximately **61% scale**. Labels and node-state text were difficult to read, despite functional execution and audit being correct. The product owner requested final UX polish and closure without compromising actual PostgreSQL data.
+
+**Changes:**
+
+- The published graph is now the **primary full-width studio surface**; the run inspector becomes a compact evidence strip directly beneath it. At CI's 1440px desktop viewport, the fit must be **at least 85%** (automatically measured), instead of accepting 61% with no readability gate.
+- Canvas height increases for presentation. Node title, subtitle, state and type labels are enlarged, with status wording (not color alone).
+- An **Enfocar** action opens an almost fullscreen modal inspection surface with the SAME published graph, zoom and pan, plus a live node audit on the right. `Escape` exits and returns keyboard focus to the initiating control; Tab stays within the modal. The standard inspector and timeline remain available after closing it.
+- Mobile keeps the established vertical accessible node list. The focus toggle is not presented on small screens where the visual canvas is hidden.
+- The footer explicitly labels the abbreviated, random **guest workspace ID**. This helps distinguish genuinely empty guest sessions from one that already contains a CRM record, without claiming any data crosses workspace boundaries.
+- Existing restrictions continue: **read-only** graph (not editor), no real LLM, no external connectors, no public deployment, no deletion or reset of PostgreSQL data.
+
+**Browser regression gates:** inspect real SVG published graph 7 nodes / 6 edges, desktop default fit >=85% and single-column studio, minimap/no-node-overlap, modal dimensions, selected CRM node audit, keyboard Escape/focus restoration, same-workspace identity after reload, different guest identity for isolated mobile browser, history/CRM navigation, owner E2E and all previous security/ledger tests.
+
+**Acceptance boundary:** Passing CI and user Windows CLI confirms behavior but not approval to merge or deploy. The three requested Slice 2 features can be marked **functionally complete** after updated Chromium and Windows visual QA. Stacked draft PR #10 remains open awaiting explicit owner approval before merging.
