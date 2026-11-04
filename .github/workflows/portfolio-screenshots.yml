@@ -6,13 +6,18 @@ on:
       - release/portfolio-github-linkedin-20261104
     paths:
       - .github/workflows/portfolio-screenshots.yml
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+    paths:
+      - .github/workflows/portfolio-screenshots.yml
 
 permissions:
   contents: read
 
 jobs:
   preserve:
-    if: github.repository == 'AlexiVion/automation-control-room'
+    if: github.repository == 'AlexiVion/automation-control-room' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -22,6 +27,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: true
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Verify the exact source artifact
         env:
           GH_TOKEN: ${{ github.token }}
@@ -58,5 +64,7 @@ jobs:
             exit 0
           fi
           git commit -m 'docs(portfolio): preserve three real Chromium CI screenshots'
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          target_branch="${{ github.head_ref || github.ref_name }}"
+          test "$target_branch" = 'release/portfolio-github-linkedin-20261104'
+          git push origin "HEAD:${target_branch}"
           echo 'PORTFOLIO_SCREENSHOTS_COMMITTED'
