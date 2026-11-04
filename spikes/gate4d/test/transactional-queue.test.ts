@@ -18,7 +18,7 @@ const waitFor = async (predicate: () => Promise<boolean>, timeoutMs = 15_000) =>
   throw new Error("TIMED_OUT_WAITING_FOR_WORKER");
 };
 
-describe.sequential("Gate 4D — real PostgreSQL + Prisma7 + pg-boss12", () => {
+describe("Gate 4D — real PostgreSQL + Prisma7 + pg-boss12", () => {
   beforeAll(async () => {
     await prisma.$connect();
     await boss.start();
