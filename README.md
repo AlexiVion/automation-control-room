@@ -16,7 +16,11 @@ Open-source, AI-assisted business workflow orchestration. Build workflows visual
 - [Acceptance tests](docs/quality/ACCEPTANCE_TESTS.md)
 - [Architecture decision records](docs/adr/README.md)
 - [Phase 4 roadmap](docs/ROADMAP.md)
+- [Full architecture research report (Spanish)](docs/research/ARCHITECTURE_RESEARCH_20261103.md)
+- [Phase 4 documentation plan (Spanish)](docs/research/PHASE4_DOCUMENT_PLAN.md)
 - [Reference repositories](docs/research/REFERENCE_REPOS.md)
+- [Phase 4 gate issues](.github/PHASE4_ISSUES.md)
+- [Contributing](CONTRIBUTING.md)
 
 ## Architectural direction (proposed)
 TypeScript modular monolith with three processes: Next.js web, Fastify API, and independent worker. PostgreSQL is the source of truth, pg-boss is the proposed queue (pending a transactional compatibility spike), and a custom deterministic workflow engine executes typed nodes. React Flow presents the graph; an LLM may propose schema-validated drafts but cannot execute arbitrary actions.
