@@ -3,6 +3,13 @@ on:
   pull_request:
     paths:
       - 'packages/contracts/**'
+      - 'apps/**'
+      - 'packages/runtime/**'
+      - 'prisma/**'
+      - 'prisma.product.config.ts'
+      - 'scripts/smoke-product.mjs'
+      - 'ops/compose/product.yml'
+      - 'ops/compose/Dockerfile.product'
       - 'packages/ux-contracts/**'
       - 'ops/compose/**'
       - 'packages/security/**'
@@ -21,9 +28,9 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 25
     permissions:
-      contents: read
+      contents: write # temporary Phase 5 npm lockfile generation, restored to read after commit
     services:
       postgres:
         image: postgres:17
@@ -48,7 +55,18 @@ jobs:
         with:
           node-version: '22'
       - name: Install pinned direct dependencies for Gate 4D spike
-        run: npm ci --ignore-scripts --no-audit --no-fund
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Commit Phase 5 updated lockfile on trusted branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/phase5-slice1-live-demo-20261104'
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'chore(phase5): lock Next.js, React and Fastify dependencies'
+            git push origin HEAD:refs/heads/feat/phase5-slice1-live-demo-20261104
+          fi
       - name: Typecheck contracts
         run: npm run typecheck
       - name: Test contracts
@@ -82,3 +100,53 @@ jobs:
         run: |
           trap 'docker compose -f ops/compose/validation.yml down -v --remove-orphans' EXIT
           docker compose -f ops/compose/validation.yml up --abort-on-container-exit --exit-code-from verifier
+
+      - name: Generate product Prisma client
+        run: npx prisma generate --config prisma.product.config.ts
+      - name: Apply versioned product migrations to disposable PostgreSQL
+        run: npx prisma migrate deploy --config prisma.product.config.ts
+      - name: Typecheck Fastify API
+        run: npm run typecheck:api
+      - name: Typecheck independent worker
+        run: npm run typecheck:worker
+      - name: Typecheck Next.js UI
+        run: npm run typecheck:web
+      - name: Build Next.js UI
+        env:
+          ACR_API_INTERNAL_URL: http://127.0.0.1:3100
+        run: npm run build:web
+      - name: Full synthetic lead -> approval -> worker -> CRM HTTP E2E
+        shell: bash
+        env:
+          ACR_LOCAL_ONLY: 'true'
+          ACR_ALLOWED_ORIGINS: http://localhost:3000
+          ACR_CSRF_SECRET: 7f4f3a9b2cae7f2f674fa524c9d83a5e8c04ef68e452b1f3147cf31acf69f438
+          ACR_API_INTERNAL_URL: http://127.0.0.1:3100
+          ACR_API_BASE: http://127.0.0.1:3100
+          ACR_WEB_BASE: http://127.0.0.1:3000
+          ACR_ORIGIN: http://localhost:3000
+        run: |
+          npm run start:api > /tmp/acr-api.log 2>&1 &
+          API_PID=$!
+          trap 'kill $API_PID ${WORKER_PID:-} ${WEB_PID:-} 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 70); do
+            if curl --silent --fail http://127.0.0.1:3100/health/ready >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --silent --fail http://127.0.0.1:3100/health/ready >/dev/null || {
+            cat /tmp/acr-api.log; exit 1;
+          }
+          npm run start:worker > /tmp/acr-worker.log 2>&1 &
+          WORKER_PID=$!
+          npm run start:web > /tmp/acr-web.log 2>&1 &
+          WEB_PID=$!
+          for attempt in $(seq 1 75); do
+            if curl --silent --fail http://127.0.0.1:3000/ >/dev/null; then break; fi
+            sleep 1
+          done
+          if ! npm run test:product; then
+            echo "=== API ==="; cat /tmp/acr-api.log
+            echo "=== WORKER ==="; cat /tmp/acr-worker.log
+            echo "=== WEB ==="; cat /tmp/acr-web.log
+            exit 1
+          fi

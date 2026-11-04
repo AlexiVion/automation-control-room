@@ -14,3 +14,10 @@ test-results/
 !.gitkeep
 
 spikes/gate4d/generated/
+
+generated/product/
+apps/web/.next/
+apps/web/.tsbuildinfo
+*.tsbuildinfo
+.env.local
+.env.production
