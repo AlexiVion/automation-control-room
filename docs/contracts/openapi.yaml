@@ -431,7 +431,7 @@ components:
       required: [executionId, status, duplicate]
       properties:
         executionId: { type: string, format: uuid }
-        status: { type: string, enum: [queued] }
+        status: { type: string, enum: [queued, running, waiting_approval, retrying, needs_review, completed, failed, cancelled] }
         duplicate: { type: boolean }
     Execution:
       type: object
