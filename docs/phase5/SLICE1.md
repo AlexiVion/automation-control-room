@@ -109,3 +109,24 @@ If this output is missing or any command fails, Slice 1 is not yet validated. Do
 Known operator requirements: Docker Desktop with Linux containers and free localhost TCP port 3000. Product DB volume persists across normal `down`. Do not run `down -v` unintentionally.
 
 The UI is a read-only workflow inspector by design in Slice 1. React Flow editable/publishable workflow canvas, real HMAC inbound webhooks and external AI/connectors remain intentionally out of scope.
+
+## Windows host port conflict: fallback without rebuilding (2026-11-04)
+
+A real Windows Docker Desktop attempt showed **all four product images available**, PostgreSQL healthy, product migration applied, Fastify API healthy and worker started, but the web container failed with `Bind for 0.0.0.0:3000 failed: port is already allocated`. This is a **host port conflict**, not a failure of Prisma or the API. Do not stop an unrelated process or delete the product database.
+
+Compose now derives **both** the web host-port mapping and the server's `ACR_ALLOWED_ORIGINS` (and smoke `ACR_ORIGIN`) from the same `ACR_WEB_PORT` value. This is important: changing only the host port would produce 403 `INVALID_ORIGIN` when using the browser.
+
+From a clean checkout of this branch, with existing Docker images tagged `acrphase5local-{migrate,api,worker,web}:latest`:
+
+```powershell
+$project = "acrphase5local"
+$env:ACR_WEB_PORT = "3300"
+docker compose -p $project -f ops/compose/product.yml config --quiet
+docker compose -p $project -f ops/compose/product.yml up --no-build -d --wait --wait-timeout 180 web worker
+docker compose -p $project -f ops/compose/product.yml exec -T api printenv ACR_ALLOWED_ORIGINS
+# Must equal http://localhost:3300
+docker compose -p $project -f ops/compose/product.yml exec -T -e ACR_API_BASE=http://api:3100 -e ACR_WEB_BASE=http://web:3000 -e ACR_ORIGIN=http://localhost:3300 api npm run test:product
+Start-Process "http://localhost:3300"
+```
+
+The images need **no rebuild** because only Compose settings and documentation changed. If 3300 is already occupied too, use another **free** local port consistently. The PostgreSQL volume is preserved by this procedure.

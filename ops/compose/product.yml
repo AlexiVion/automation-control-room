@@ -35,7 +35,7 @@ services:
     environment:
       <<: *common-env
       ACR_LOCAL_ONLY: "true"
-      ACR_ALLOWED_ORIGINS: http://localhost:3000
+      ACR_ALLOWED_ORIGINS: "http://localhost:${ACR_WEB_PORT:-3000}"
       # Development-only key, never valid for a public deployment.
       ACR_CSRF_SECRET: "7f4f3a9b2cae7f2f674fa524c9d83a5e8c04ef68e452b1f3147cf31acf69f438"
     depends_on:
@@ -78,7 +78,7 @@ services:
       <<: *common-env
       ACR_API_BASE: http://api:3100
       ACR_WEB_BASE: http://web:3000
-      ACR_ORIGIN: http://localhost:3000
+      ACR_ORIGIN: "http://localhost:${ACR_WEB_PORT:-3000}"
     depends_on:
       web:
         condition: service_healthy
