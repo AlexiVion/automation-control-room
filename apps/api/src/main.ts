@@ -83,7 +83,7 @@ app.post("/v1/lab/preview",async(req)=> {
     input:z.record(z.string(),z.unknown()),
     decision:z.enum(["approved","rejected"]).optional()
   }).safeParse(req.body);
-  if(!parsed.success)http(422,"INVALID_LAB_REQUEST");
+  if(!parsed.success)throw new HttpError(422,"INVALID_LAB_REQUEST");
   try {
     return previewLabWorkflow(parsed.data.draft,parsed.data.input,parsed.data.decision);
   }catch(error) {
