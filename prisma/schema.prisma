@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client"
+  output = "../generated/product"
+  moduleFormat = "esm"
+}
+datasource db {
+  provider = "postgresql"
+}
+
+model DemoWorkspace {
+  id          String @id @db.Uuid
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+  runsStarted Int @default(0)
+  activeRuns  Int @default(0)
+  sessions    DemoSession[]
+  executions  DemoExecution[]
+  crmRecords  DemoCrm[]
+  @@index([expiresAt])
+}
+model DemoSession {
+  id String @id @db.Uuid
+  workspaceId String @db.Uuid
+  tokenHash String @unique
+  createdAt DateTime @default(now())
+  lastSeenAt DateTime
+  expiresAt DateTime
+  workspace DemoWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  @@index([workspaceId])
+}
+model DemoVersion {
+  id String @id @db.Uuid
+  name String
+  graphDigest String
+  graph Json
+  createdAt DateTime @default(now())
+  executions DemoExecution[]
+}
+model DemoExecution {
+  id String @id @db.Uuid
+  workspaceId String @db.Uuid
+  versionId String @db.Uuid
+  eventId String
+  leadId String
+  priority String?
+  category String?
+  status String @default("queued")
+  failOnce Boolean @default(false)
+  attempts Int @default(0)
+  lastEventSeq Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  workspace DemoWorkspace @relation(fields: [workspaceId],references:[id],onDelete:Cascade)
+  version DemoVersion @relation(fields:[versionId],references:[id])
+  events DemoEvent[]
+  approval DemoApproval?
+  actions DemoAction[]
+  @@unique([workspaceId,eventId])
+  @@index([workspaceId,createdAt])
+}
+model DemoEvent {
+  id String @id @db.Uuid
+  executionId String @db.Uuid
+  sequence Int
+  eventType String
+  nodeId String?
+  message String
+  createdAt DateTime @default(now())
+  execution DemoExecution @relation(fields:[executionId],references:[id],onDelete:Cascade)
+  @@unique([executionId,sequence])
+  @@index([executionId,createdAt])
+}
+model DemoApproval {
+  id String @id @db.Uuid
+  executionId String @unique @db.Uuid
+  status String @default("pending")
+  payloadDigest String
+  expiresAt DateTime
+  decidedAt DateTime?
+  createdAt DateTime @default(now())
+  execution DemoExecution @relation(fields:[executionId],references:[id],onDelete:Cascade)
+}
+model DemoAction {
+  operationKey String @id
+  executionId String @db.Uuid
+  status String
+  execution DemoExecution @relation(fields:[executionId],references:[id],onDelete:Cascade)
+}
+model DemoCrm {
+  id String @id @db.Uuid
+  workspaceId String @db.Uuid
+  externalKey String
+  category String
+  priority String
+  executionId String @db.Uuid
+  updatedAt DateTime @updatedAt
+  workspace DemoWorkspace @relation(fields:[workspaceId],references:[id],onDelete:Cascade)
+  @@unique([workspaceId,externalKey])
+}

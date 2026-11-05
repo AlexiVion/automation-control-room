@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client"
+  output = "../generated/prisma"
+  moduleFormat = "esm"
+}
+datasource db {
+  provider = "postgresql"
+}
+model SpikeExecution {
+  id           String   @id @default(uuid()) @db.Uuid
+  sourceId     String
+  eventId      String
+  status       String   @default("queued")
+  attempts     Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  @@unique([sourceId, eventId])
+}
+model SpikeEvent {
+  id           String   @id @default(uuid()) @db.Uuid
+  executionId  String   @db.Uuid
+  sequence     Int
+  eventType    String
+  createdAt    DateTime @default(now())
+  @@unique([executionId, sequence])
+}
+model SpikeApproval {
+  id           String   @id @default(uuid()) @db.Uuid
+  executionId  String   @db.Uuid
+  status       String   @default("pending")
+  @@unique([executionId])
+}
+model SpikeAction {
+  operationKey String   @id
+  executionId  String   @db.Uuid
+  status       String
+}
+model SpikeCrmRecord {
+  id           String   @id @default(uuid()) @db.Uuid
+  externalKey  String   @unique
+  executionId  String   @db.Uuid
+}
+
+model SpikeWorkspace {
+  id          String   @id @default(uuid()) @db.Uuid
+  mode        String
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+  runsStarted Int      @default(0)
+  activeRuns  Int      @default(0)
+  sessions    SpikeGuestSession[]
+  crmRecords  SpikeScopedCrmRecord[]
+}
+
+model SpikeGuestSession {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @unique @db.Uuid
+  tokenHash   String   @unique
+  createdAt   DateTime
+  lastSeenAt  DateTime
+  expiresAt   DateTime
+  workspace   SpikeWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model SpikeScopedCrmRecord {
+  id          String @id @default(uuid()) @db.Uuid
+  workspaceId String @db.Uuid
+  externalKey String
+  value       String
+  workspace   SpikeWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  @@unique([workspaceId, externalKey])
+}

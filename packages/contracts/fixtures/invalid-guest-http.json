@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "trigger": {
+    "nodeId": "source"
+  },
+  "nodes": [
+    {
+      "id": "source",
+      "type": "webhook.trigger",
+      "config": {
+        "sourceKey": "lead.webhook"
+      }
+    },
+    {
+      "id": "classify",
+      "type": "ai.classify",
+      "config": {
+        "schemaKey": "lead-classification-v1",
+        "input": {
+          "kind": "path",
+          "path": "$.trigger.lead.text"
+        }
+      }
+    },
+    {
+      "id": "branch",
+      "type": "condition",
+      "config": {
+        "left": {
+          "kind": "path",
+          "path": "$.steps.classify.priority"
+        },
+        "operator": "eq",
+        "right": "high"
+      }
+    },
+    {
+      "id": "approval",
+      "type": "approval",
+      "config": {
+        "reason": "Confirmar alta en CRM demo",
+        "expiresMinutes": 10
+      }
+    },
+    {
+      "id": "crm",
+      "type": "http.request",
+      "config": {
+        "destinationKey": "crm.remote",
+        "method": "POST",
+        "body": {
+          "kind": "path",
+          "path": "$.trigger.lead.id"
+        }
+      }
+    },
+    {
+      "id": "done_high",
+      "type": "finish",
+      "config": {}
+    },
+    {
+      "id": "done_low",
+      "type": "finish",
+      "config": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "source",
+      "target": "classify"
+    },
+    {
+      "id": "e2",
+      "source": "classify",
+      "target": "branch"
+    },
+    {
+      "id": "e3",
+      "source": "branch",
+      "target": "approval",
+      "branch": "true"
+    },
+    {
+      "id": "e4",
+      "source": "branch",
+      "target": "done_low",
+      "branch": "false"
+    },
+    {
+      "id": "e5",
+      "source": "approval",
+      "target": "crm"
+    },
+    {
+      "id": "e6",
+      "source": "crm",
+      "target": "done_high"
+    }
+  ]
+}

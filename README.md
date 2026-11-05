@@ -1,29 +1,98 @@
 # Automation Control Room
 
-**Status:** Phase 4 — architecture definition. No runnable application has been implemented yet.
+**A full-stack engineering portfolio project — working local demo, not a commercial product.**
 
-Open-source, AI-assisted business workflow orchestration designed as an independent portfolio project.
+Automation Control Room is an open-source technical project exploring durable business workflow orchestration: how to intake an event, make a deterministic decision, request human approval, execute an idempotent action in a background worker, and inspect the resulting persistent audit trail.
 
-## Vision
+> **Status (November 2026):** Phase 5 / Slice 2 implemented. The runnable local demo, final UX checks and portfolio docs are integrated in [release PR #15](https://github.com/AlexiVion/automation-control-room/pull/15), verified by Windows Docker Desktop and GitHub Actions. The release candidate is being reviewed for inclusion in the default `main` branch; [PR #15](https://github.com/AlexiVion/automation-control-room/pull/15) tracks the transition. This is a **synthetic-data demonstration** with a **published, read-only workflow**, not a hosted service, visual editor or live AI agent.
 
-Build workflows visually or with a natural-language proposal, validate them, require human approvals for sensitive actions, execute with durable workers, and inspect every step and audit event.
+**[Integrated release candidate](https://github.com/AlexiVion/automation-control-room/pull/15)** · **[Verified code + Chromium CI](https://github.com/AlexiVion/automation-control-room/actions/runs/41929735160)** · **[Architecture and acceptance details](docs/phase5/SLICE2.md)** · **[Portfolio-first direction](docs/PORTFOLIO_FIRST.md)**
 
-## Architectural direction (proposed)
+## Portfolio walkthrough
 
-- TypeScript modular monolith with three deployable processes: **web**, **API**, **worker**.
-- Next.js, React Flow, Fastify, Zod, PostgreSQL, Prisma, pg-boss.
-- Own deterministic workflow engine and typed connector interfaces.
-- AI proposes structured drafts; policy-controlled worker code executes effects.
-- A signed-lead-webhook demo with AI classification, human approval, idempotent CRM upsert and execution history.
+The shortest way to understand this repository is to follow one **real local run**:
 
-## Boundaries
+```text
+Synthetic lead → deterministic classification → conditional routing
+               → human approval → independent worker
+               → synthetic CRM write → persistent history & audit
+```
 
-Independent from ClickDialog infrastructure, customer information, private source and credentials. No payments or commercial multi-tenancy in the first version. Architecture decisions and executable contracts are subject to Phase 4 review.
+The repository includes [authentic, permanently stored Chromium screenshots](docs/portfolio/ASSET_PROVENANCE.md), a [75–90 second recording storyboard](docs/portfolio/DEMO_STORYBOARD.md), an [architecture diagram with technical boundaries](docs/portfolio/ARCHITECTURE_AT_A_GLANCE.md), and the [GitHub/LinkedIn publication checklist](docs/portfolio/PUBLICATION_GATE.md). **No video or publicly hosted demo is being claimed.**
 
-## Development
+## Verified screenshots
 
-Documentation will be prepared in a dedicated pull request. Implementation begins after agreeing on the Phase 4 contracts, acceptance criteria and security controls.
+The following images were captured from a real, passing, browser-driven Chromium E2E test and preserved in this repository. The CRM is **synthetic**; classification uses a deterministic fixture. [Image provenance, source commit and SHA-256 checksums](docs/portfolio/ASSET_PROVENANCE.md).
 
-## License
+| Completed workflow and persisted CRM event | Confirmed synthetic CRM write |
+| :--- | :--- |
+| ![Read-only workflow focus mode, completed nodes and persisted CRM confirmation event](docs/portfolio/media/02b-focus-mode-audit-desktop.png) | ![Synthetic CRM screen with one confirmed lead record after human approval](docs/portfolio/media/04-confirmed-crm-desktop.png) |
 
-Apache-2.0 for original project contributions (see LICENSE once added).
+**Persistent history after reload**
+
+![Saved execution history and persisted event audit after a real browser reload](docs/portfolio/media/03-reloadable-history-desktop.png)
+
+## What you can demonstrate today
+
+- **Real execution lifecycle:** choose a synthetic lead → classify with an explicitly labelled deterministic fixture → evaluate a condition → approve/reject a proposed CRM write → let an independent worker complete the run.
+- **Durable evidence:** PostgreSQL-backed execution events, approved/rejected decisions, execution history, a synthetic CRM record and linked audit trail. Refresh a page and inspect the same saved run.
+- **Reliability and correctness:** transactional enqueue, durable worker processing, scoped session authorization, idempotent local CRM upsert, controlled retry, rejection, quota and cross-session isolation.
+- **Workflow visualization:** zoomable/pannable read-only canvas generated from a published graph, both decision branches, minimap, focused inspection mode and event-derived states.
+- **Verifiable metrics:** normal approved CRM write = 1 CRM attempt / 0 retries; the controlled transient-failure case = 2 attempts / 1 retry.
+
+**This is not yet:** an editable general workflow engine, a third-party integration platform, an authenticated operator console, an LLM-powered planner or a public deployment. Those are possible engineering extensions, not features being advertised here.
+
+## Architecture
+
+```text
+Next.js + React UI
+       |
+       | same-origin API proxy / guest cookie
+       v
+Fastify API --- session scope / approval / event history
+       |
+       v
+PostgreSQL 17 <---> pg-boss queue
+       ^
+       |
+Independent worker ---> deterministic workflow steps ---> synthetic demo CRM
+```
+
+**Technology:** TypeScript, Next.js, React, Fastify, PostgreSQL 17, Prisma 7, pg-boss, Zod, Docker Compose, Vitest and Chromium browser E2E testing.
+
+The web UI does **not** execute the work itself. PostgreSQL is the source of truth for decisions and progress; the queue and browser event stream are delivery mechanisms. The synthetic demo is deliberately isolated from external credentials and paid AI services.
+
+## Run locally (Windows / Docker Desktop)
+
+**Prerequisites:** Git, Docker Desktop with the **Linux engine** running, and PowerShell. The demo stays bound to localhost.
+
+```powershell
+git clone https://github.com/AlexiVion/automation-control-room.git
+cd automation-control-room
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows-start-slice2.ps1 -Port 3300
+```
+
+**During PR #15 review only:** before running the last PowerShell line, execute `git switch release/portfolio-github-linkedin-20261104` to use the integrated release branch. **After PR #15 is merged**, the default `main` checkout works directly as shown. Open **http://localhost:3300**. The script builds one shared image, tags the processes, starts Postgres/API/worker/web, applies versioned migrations and runs HTTP + unit smoke checks. On an existing checkout it preserves the PostgreSQL volume; **do not use `docker compose down -v` unless you intend to delete local demo data**.
+
+Expected local markers: `PRODUCT_SLICE1_E2E_PASS` and `SLICE2_WINDOWS_PASS`.
+
+For project test matrices, Compose details, guest-data limitations and QA evidence, see [Slice 1](docs/phase5/SLICE1.md), [Slice 2](docs/phase5/SLICE2.md) and the [portfolio publication gate](docs/portfolio/PUBLICATION_GATE.md). The [Phase 4 release gates](docs/quality/RELEASE_GATES.md) are historical and do not describe the current runnable demo. The [final UX head CI](https://github.com/AlexiVion/automation-control-room/actions/runs/41929735160) exercised the real product Compose and Chromium desktop/mobile journey. Combined release PR #15 has its own CI gate.
+
+## Roadmap: portfolio first, product-ready by design
+
+The **current deliverable** is a high-quality, reproducible engineering case study suitable for GitHub and LinkedIn. Near-term work prioritizes a clear README, real screenshots or a 60–90-second walkthrough, a reproducible local install, architecture explanations, reliable CI and honest documentation of technical trade-offs.
+
+We are deliberately keeping a future product path open through typed contracts, immutable published versions, isolated workspaces, durable execution semantics and connector interfaces. A **general editor, operator authentication, guarded external connectors, optional LLM integration, advanced operations and public-release security** require separate implementation and acceptance. Commercial plans, billing, multitenant SaaS and a plugin marketplace are **not current goals**.
+
+See [portfolio scope and decision gates](docs/PORTFOLIO_FIRST.md) and the [follow-up engineering backlog](https://github.com/AlexiVion/automation-control-room/issues/11).
+
+## Engineering references
+
+- [Product requirements / proposed future scope](docs/product/PRD.md) — a design proposal, **not a list of implemented features**.
+- [Architecture blueprint](docs/architecture/ARCHITECTURE.md) · [Domain and state machine](docs/architecture/DOMAIN_MODEL.md) · [Execution semantics](docs/architecture/EXECUTION_SEMANTICS.md)
+- [Executable Zod contracts](packages/contracts/README.md) · [OpenAPI 3.1](docs/contracts/openapi.yaml) · [Connector SDK proposal](docs/contracts/CONNECTOR_SDK.md)
+- [Threat model](docs/security/THREAT_MODEL.md) · [Security controls and known gaps](docs/security/SECURITY_CONTROLS.md)
+- [Phase 4 baseline](docs/PHASE4_BASELINE.md) · [UX acceptance script](docs/ux/DEMO_ACCEPTANCE_SCRIPT.md) · [Portfolio readiness audit](docs/portfolio/READINESS_AUDIT_20261104.md)
+- [Operational runbook](docs/operations/DEPLOYMENT_RUNBOOK.md) · [Contributing](CONTRIBUTING.md)
+
+**Project boundary:** independent of ClickDialog; no shared customer data, infrastructure, credentials or billing systems. The repository includes an [Apache-2.0 LICENSE](LICENSE). Copyright attribution and third-party dependency/asset provenance remain under [publication review](docs/portfolio/READINESS_AUDIT_20261104.md); no claim of completed license compliance is made.

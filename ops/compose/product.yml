@@ -1,0 +1,89 @@
+name: acr-product-local
+x-common: &common
+  build:
+    context: ../..
+    dockerfile: ops/compose/Dockerfile.product
+  environment: &common-env
+    DATABASE_URL: postgresql://acr:acr_local_only@postgres:5432/acr_local
+    NODE_ENV: development
+  restart: unless-stopped
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: acr
+      POSTGRES_PASSWORD: acr_local_only
+      POSTGRES_DB: acr_local
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acr -d acr_local"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - acr_product_postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+  migrate:
+    <<: *common
+    command: ["npx","prisma","migrate","deploy","--config","prisma.product.config.ts"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+  api:
+    <<: *common
+    command: ["npm","run","start:api"]
+    environment:
+      <<: *common-env
+      ACR_LOCAL_ONLY: "true"
+      ACR_ALLOWED_ORIGINS: "http://localhost:${ACR_WEB_PORT:-3000}"
+      # Development-only key, never valid for a public deployment.
+      ACR_CSRF_SECRET: "7f4f3a9b2cae7f2f674fa524c9d83a5e8c04ef68e452b1f3147cf31acf69f438"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    expose: ["3100"]
+    healthcheck:
+      test: ["CMD","node","-e","fetch('http://127.0.0.1:3100/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      start_period: 12s
+      retries: 25
+  worker:
+    <<: *common
+    command: ["npm","run","start:worker"]
+    depends_on:
+      api:
+        condition: service_healthy
+  web:
+    <<: *common
+    command: ["npm","run","dev:web"]
+    environment:
+      <<: *common-env
+      ACR_API_INTERNAL_URL: http://api:3100
+    ports: ["127.0.0.1:${ACR_WEB_PORT:-3000}:3000"]
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD","node","-e","fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 6s
+      timeout: 5s
+      start_period: 20s
+      retries: 35
+  smoke:
+    <<: *common
+    profiles: ["test"]
+    command: ["npm","run","test:product"]
+    environment:
+      <<: *common-env
+      ACR_API_BASE: http://api:3100
+      ACR_WEB_BASE: http://web:3000
+      ACR_ORIGIN: "http://localhost:${ACR_WEB_PORT:-3000}"
+    depends_on:
+      web:
+        condition: service_healthy
+      worker:
+        condition: service_started
+    restart: "no"
+volumes:
+  acr_product_postgres:
