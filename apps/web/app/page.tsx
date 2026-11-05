@@ -115,6 +115,7 @@ export default function Dashboard(){
   const [crm,setCrm]=useState<Crm[]>([]);
   const [screen,setScreen]=useState<Screen>("home");
   const [selectedNode,setSelectedNode]=useState("source");
+  const storyOutcomeRef=useRef<HTMLElement|null>(null);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const [notice,setNotice]=useState("");
@@ -300,6 +301,14 @@ export default function Dashboard(){
   const story=storyCases[current?.leadId??fixtureId]??storyCases.lead_demo_001;
   const wasWritten=events.some(e=>e.eventType==="crm.confirmed");
   const isWaiting=current?.status==="waiting_approval"&&snapshot?.approval?.status==="pending";
+  useEffect(()=>{
+    if(screen==="home"&&isWaiting){
+      // If the user started from the hero CTA, the pending decision must be
+      // brought into view instead of remaining far below the fold.
+      storyOutcomeRef.current?.scrollIntoView({block:"center",behavior:"smooth"});
+    }
+  },[screen,isWaiting]);
+
   const node=workflow?.graph.nodes.find(n=>n.id===selectedNode);
   const nodeEvents=events.filter(e=>e.nodeId===selectedNode);
   const visibleHistory=history.filter(x=>{
@@ -455,7 +464,7 @@ export default function Dashboard(){
                   onClick={()=>void start()}>{busy?"Procesando…":"Procesar esta consulta"} <span aria-hidden="true">→</span></button>
                 <p className="expCaseFoot">Podés probar hasta cinco ejecuciones por sesión, con distintos resultados.</p>
               </section>
-              <section className={"expOutcomeCard "+(isWaiting?"expOutcomeWaiting":wasWritten&&current?.status==="completed"?"expOutcomeSuccess":"")} aria-live="polite" aria-label="Resultado de la automatización">
+              <section ref={storyOutcomeRef} className={"expOutcomeCard "+(isWaiting?"expOutcomeWaiting":wasWritten&&current?.status==="completed"?"expOutcomeSuccess":"")} aria-live="polite" aria-label="Resultado de la automatización">
                 <div className="expCardHeading"><span className="expKicker">02 / LO QUE PASA DESPUÉS</span><span className="expLiveFlag"><span/> ESTADO REAL</span></div>
                 {!current?<div className="expEmptyOutcome">
                   <div className="expOutcomeSymbol">↗</div>
