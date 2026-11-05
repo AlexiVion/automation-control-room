@@ -210,3 +210,5 @@ try {
 await json("/v1/demo/me",{cookie:otherCookie,expected:401});
 log("Expired idle guest session is rejected");
 console.log("PRODUCT_SLICE1_E2E_PASS");
+// A separate guest session checks real authored workflows and immutable versions.
+await import("./smoke-lab.mjs");
