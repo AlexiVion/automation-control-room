@@ -107,3 +107,10 @@
 @media(max-width:660px){.slice2Shell:has(.experienceHome) .slice2Content{padding:15px 14px}.expHero{padding:31px 24px;border-radius:16px;gap:29px}.expHeroCopy h1{font-size:38px}.expHeroIntro{font-size:14px}.expHeroActions{align-items:stretch;flex-direction:column;gap:5px}.expHeroActions .expButtonMain{width:100%}.expVisualHeader,.expVisualFooter{padding:12px 14px}.expMessage{padding:16px 14px 8px}.expQuote{margin:9px 14px 19px;padding:15px 17px;font-size:14px}.expClassification{margin:0 14px 14px;align-items:flex-start;flex-direction:column;gap:2px}.expWorkspace{padding-top:28px}.expSectionTop{align-items:flex-start;flex-direction:column}.expRunLimit{white-space:normal}.expFlowSteps{grid-template-columns:1fr 1fr}.expStep{min-height:92px}.expStep small{font-size:10px}.expCaseCard,.expOutcomeCard{padding:21px 19px}.expDecisionButtons{flex-direction:column}.expTrust{padding:24px 20px}.expTrust button{white-space:normal}.expOutcomeCard h3{font-size:25px}}
 @media(max-width:380px){.expFlowSteps{grid-template-columns:1fr}.expStep{min-height:70px;border-bottom:1px solid var(--xp-border)!important;border-right:0}.expStep:last-child{border-bottom:0!important}.expHeroCopy h1{font-size:34px}}
 @media(prefers-reduced-motion:reduce){.experienceHome button,.expOutcomeProgress{animation:none;transition:none}}
+
+/* Four honest destinations rather than a three-column layout with one orphan item. */
+@media(max-width:660px){
+ .slice2Shell .sideNav{grid-template-columns:repeat(4,minmax(0,1fr))}
+ .slice2Shell .navItem{font-size:10.5px;letter-spacing:-.01em;overflow-wrap:anywhere}
+ .slice2Shell .navItem small{display:none}
+}
