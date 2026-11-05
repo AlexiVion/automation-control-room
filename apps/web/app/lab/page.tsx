@@ -243,7 +243,7 @@ export default function WorkflowLab(){
     if(!dirty)return {id:workflowId,revision};
     const saved=await fetchJSON<{draftRevision:number}>(
       "/v1/lab/workflows/"+workflowId+"/draft","PUT",session.csrf,
-      {expectedRevision:revision,draft});
+      {expectedRevision:revision,name:workflowName,draft});
     setRevision(saved.draftRevision);setDirty(false);
     await reloadList();
     return {id:workflowId,revision:saved.draftRevision};
@@ -295,8 +295,8 @@ export default function WorkflowLab(){
         if(terminal.has(next.status)){void reloadHistory();}
       }catch(e){if(active)setError(e instanceof Error?e.message:String(e))}
     };
-    void refresh();
     const interval=setInterval(()=>{void refresh()},800);
+    void refresh();
     return()=>{active=false;clearInterval(interval)};
   },[runId,reloadHistory]);
   async function decide(decision:"approved"|"rejected"){
@@ -310,7 +310,10 @@ export default function WorkflowLab(){
     finally{setBusy(false)}
   }
   async function compare(){
-    const selectedRuns=runHistory.filter(item=>versionId?item.versionId!==versionId:true).slice(0,2);
+    const allowed=new Set(versions.map(v=>v.id));
+    const perVersion=new Map<string,typeof runHistory[number]>();
+    for(const item of runHistory){if(allowed.has(item.versionId)&&!perVersion.has(item.versionId))perVersion.set(item.versionId,item);}
+    const selectedRuns=[...perVersion.values()].slice(0,2);
     try{
       const details=await Promise.all(selectedRuns.map(item=>
         fetchJSON<Run>("/v1/lab/runs/"+item.id)));

@@ -14,7 +14,7 @@ type AuthBoundary = {
 const json = (x:unknown): any => JSON.parse(JSON.stringify(x));
 const uuid = z.uuid();
 const workflowInput=z.strictObject({name:z.string().trim().min(3).max(90),draft:z.unknown()});
-const draftInput=z.strictObject({expectedRevision:z.number().int().min(0),draft:z.unknown()});
+const draftInput=z.strictObject({expectedRevision:z.number().int().min(0),name:z.string().trim().min(3).max(90).optional(),draft:z.unknown()});
 const publishInput=z.strictObject({expectedRevision:z.number().int().min(0)});
 const runInput=z.strictObject({
   input:z.record(z.string(),z.unknown()),
@@ -91,7 +91,7 @@ export function registerLabRoutes(app:FastifyInstance,auth:AuthBoundary) {
     const graph=labGraph(body.draft,http);
     const changed=await db.labWorkflow.updateMany({where:{
       id:workflowId,workspaceId:owner.workspaceId,draftRevision:body.expectedRevision
-    },data:{draft:json(graph),draftRevision:{increment:1}}});
+    },data:{draft:json(graph),draftRevision:{increment:1},...(body.name?{name:body.name}:{})}});
     if(changed.count!==1)return http(409,"LAB_REVISION_CONFLICT");
     const saved=await db.labWorkflow.findUniqueOrThrow({where:{id:workflowId}});
     return {workflowId,draftRevision:saved.draftRevision,draft:saved.draft};
