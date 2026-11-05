@@ -17,7 +17,13 @@ type HistoryRun={id:string;leadId:string;priority:string|null;category:string|nu
 type HistoryPage={items:HistoryRun[];total:number;nextCursor:string|null};
 type Crm={id:string;externalKey:string;priority:string;category:string;updatedAt:string;executionId:string};
 type Workflow={id:string;name:string;graphDigest:string;graph:PublishedGraph};
-type Screen="demo"|"activity"|"crm";
+type Screen="home"|"demo"|"activity"|"crm";
+const storyCases:Record<string,{title:string;question:string;from:string;kind:string}>={
+  lead_demo_001:{title:"Automatizar consultas",question:"«Quiero automatizar las consultas que llegan desde la web de mi negocio. ¿Por dónde empezamos?»",from:"Potencial cliente · Consulta comercial",kind:"Necesita respuesta y revisión humana"},
+  lead_demo_002:{title:"Desarrollar un panel interno",question:"«Estamos evaluando un panel para organizar nuestras tareas internas.»",from:"Empresa · Solicitud de software",kind:"Solicitud informativa · Sin alta automática"},
+  lead_demo_003:{title:"Hacer una consulta general",question:"«Hola, quisiera recibir información general sobre el servicio.»",from:"Visitante · Consulta general",kind:"Solicitud informativa · Sin alta automática"}
+};
+
 const statuses:Record<string,string>={
   queued:"En cola",running:"Ejecutando",waiting_approval:"Esperando aprobación",
   retrying:"Reintentando",completed:"Completada",cancelled:"Cancelada",
@@ -107,8 +113,9 @@ export default function Dashboard(){
   const currentRun=useRef<string|null>(null);
   const [snapshot,setSnapshot]=useState<Snapshot|null>(null);
   const [crm,setCrm]=useState<Crm[]>([]);
-  const [screen,setScreen]=useState<Screen>("demo");
+  const [screen,setScreen]=useState<Screen>("home");
   const [selectedNode,setSelectedNode]=useState("source");
+  const storyOutcomeRef=useRef<HTMLElement|null>(null);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const [notice,setNotice]=useState("");
@@ -139,7 +146,7 @@ export default function Dashboard(){
       if(currentRun.current!==id)setSnapshot(null);
       currentRun.current=id;
       setRunId(id);
-      setScreen(view==="demo"||view==="activity"||view==="crm"?view:"demo");
+      setScreen(view==="home"||view==="demo"||view==="activity"||view==="crm"?view:"home");
     };
     fromURL();
     setHydrated(true);
@@ -270,9 +277,9 @@ export default function Dashboard(){
       const accepted=await getJSON<{executionId:string}>("/v1/demo/events",{
         method:"POST",headers:{"Content-Type":"application/json",
           "X-ACR-CSRF":session.csrf,"Idempotency-Key":crypto.randomUUID()},
-        body:JSON.stringify({fixtureId,simulateTransientFailureOnce:failOnce})
+        body:JSON.stringify({fixtureId,simulateTransientFailureOnce:screen==="home"?false:failOnce})
       });
-      pickRun(accepted.executionId,"demo");
+      pickRun(accepted.executionId,screen==="home"?"home":"demo");
       await reloadHistory(true);
     }catch(e){setError(e instanceof Error?e.message:"START_FAILED");}
     finally{setBusy(false);}
@@ -291,6 +298,17 @@ export default function Dashboard(){
   }
   const current=snapshot?.execution??null;
   const events=snapshot?.events??[];
+  const story=storyCases[fixtureId]??storyCases.lead_demo_001;
+  const wasWritten=events.some(e=>e.eventType==="crm.confirmed");
+  const isWaiting=current?.status==="waiting_approval"&&snapshot?.approval?.status==="pending";
+  useEffect(()=>{
+    if(screen==="home"&&isWaiting){
+      // If the user started from the hero CTA, the pending decision must be
+      // brought into view instead of remaining far below the fold.
+      storyOutcomeRef.current?.scrollIntoView({block:"center",behavior:"smooth"});
+    }
+  },[screen,isWaiting]);
+
   const node=workflow?.graph.nodes.find(n=>n.id===selectedNode);
   const nodeEvents=events.filter(e=>e.nodeId===selectedNode);
   const visibleHistory=history.filter(x=>{
@@ -327,10 +345,10 @@ export default function Dashboard(){
       setNotice(session?
         "Nueva sesión de demostración activa. La sesión anterior no se comparte.":
         "Conexión restablecida. El espacio demo ya está disponible.");
-      setScreen("demo");
+      setScreen("home");
       setError("");
       const url=new URL(window.location.href);
-      url.searchParams.set("view","demo");
+      url.searchParams.set("view","home");
       url.searchParams.delete("run");
       window.history.replaceState(null,"",url.pathname+url.search);
       void reloadHistory(true);
@@ -341,10 +359,11 @@ export default function Dashboard(){
     <a className="skipLink" href="#main-content">Saltar al contenido</a>
     <aside className="sidebar">
       <div className="brand"><span className="brandmark">◈</span><div><strong>Automation</strong><span>Control Room</span></div></div>
-      <div className="navCaption">WORKSPACE</div>
+      <div className="navCaption">EXPLORAR</div>
       <nav className="sideNav" aria-label="Principal">
-        <button className={screen==="demo"?"navItem current":"navItem"} aria-current={screen==="demo"?"page":undefined} title="Demo interactiva" onClick={()=>navigation("demo")}>
-          <span>◫</span> Demo interactiva</button>
+        <button className={screen==="home"?"navItem current":"navItem"} aria-current={screen==="home"?"page":undefined} title="Inicio" onClick={()=>navigation("home")}><span>⌂</span> Inicio</button>
+        <button className={screen==="demo"?"navItem current":"navItem"} aria-current={screen==="demo"?"page":undefined} title="Vista técnica" onClick={()=>navigation("demo")}>
+          <span>◫</span> Vista técnica</button>
         <button className={screen==="activity"?"navItem current":"navItem"} aria-current={screen==="activity"?"page":undefined} title="Historial de ejecuciones" onClick={()=>navigation("activity")}>
           <span>◷</span> Historial <small>{sessionExpired?"—":historyTotal}</small></button>
         <button className={screen==="crm"?"navItem current":"navItem"} aria-current={screen==="crm"?"page":undefined} title="CRM ficticio" onClick={()=>navigation("crm")}>
@@ -359,20 +378,20 @@ export default function Dashboard(){
     <main className="main" id="main-content" tabIndex={-1}>
       <header className="topbar">
         <div className="breadcrumb">Automation Control Room <span>/</span>
-          <strong>{screen==="demo"?"Demo":screen==="activity"?"Historial de ejecuciones":"CRM ficticio"}</strong>
+          <strong>{screen==="home"?"Inicio":screen==="demo"?"Vista técnica":screen==="activity"?"Historial de ejecuciones":"CRM ficticio"}</strong>
         </div>
-        <div className="topRight"><span className="environment">LOCAL · SLICE 2</span>
-          <a href="https://github.com/AlexiVion/automation-control-room/tree/feat/phase5-slice2-ux-history-20261104" target="_blank" rel="noreferrer">Código de demo ↗</a></div>
+        <div className="topRight"><span className="environment">DEMO LOCAL</span>
+          <a href="https://github.com/AlexiVion/automation-control-room/tree/feat/portfolio-guided-experience-20261104" target="_blank" rel="noreferrer">Código de demo ↗</a></div>
       </header>
       <div className="content slice2Content">
-        <div className="heading slice2Heading">
+        {screen!=="home"&&<div className="heading slice2Heading">
           <div>
             <h1 ref={screenTitle} tabIndex={-1}>{screen==="demo"?"Tu automatización, paso a paso":screen==="activity"?"Historial de ejecuciones":"CRM de demostración"}</h1>
             <p>{screen==="demo"?"Cada decisión, evento y escritura se puede inspeccionar.":screen==="activity"?
               "Volvé a cualquier ejecución guardada en tu workspace.":"Registros sintéticos escritos y confirmados por PostgreSQL."}</p>
           </div>
           <span className="modeTag"><span/> Datos ficticios · clasificación determinista</span>
-        </div>
+        </div>}
         {error&&<div className="error" role="alert"><strong>Atención:</strong> {humanError[error]??error}
           {sessionExpired?<button type="button" className="sessionRecover" disabled={busy}
             onClick={()=>void renewDemo()}>{busy?"Iniciando…":"Iniciar nueva sesión demo"}</button>:
@@ -388,6 +407,107 @@ export default function Dashboard(){
               onClick={()=>void renewDemo()}>{busy?"Reintentando…":"Reintentar conexión"}</button>
           </div>:
           <><span className="spinner"/> Iniciando workspace aislado…</>}
+        </div>}
+
+        {session&&!sessionExpired&&screen==="home"&&<div className="experienceHome">
+          <section className="expHero" aria-labelledby="expHeroTitle">
+            <div className="expHeroCopy">
+              <span className="expEyebrow"><span className="expPulse"/> UNA AUTOMATIZACIÓN QUE PODÉS COMPROBAR</span>
+              <h1 id="expHeroTitle" ref={screenTitle} tabIndex={-1}>Una consulta entra.<br/><span>Vos tenés el control.</span></h1>
+              <p className="expHeroIntro">Una empresa recibe un mensaje. El sistema identifica qué necesita atención, espera tu aprobación y recién entonces guarda el contacto. Probalo de principio a fin.</p>
+              <div className="expHeroActions">
+                <button className="expButtonMain" disabled={busy||session.budgets.runsRemaining<=0||Boolean(current&&!terminal.has(current.status))} onClick={()=>void start()}>
+                  {busy?"Procesando…":!current?"Probar con una consulta realista":terminal.has(current.status)?"Iniciar otro ejemplo":"Ejecución en curso"} <span aria-hidden="true">↗</span>
+                </button>
+                <button className="expButtonText" onClick={()=>navigation("demo")}>Ver cómo funciona por dentro <span aria-hidden="true">→</span></button>
+              </div>
+              <p className="expTruthNote">Demo sin datos reales · Clasificación simulada · CRM local ficticio</p>
+            </div>
+            <div className="expHeroVisual" aria-label="Vista previa de una consulta ficticia">
+              <div className="expVisualHeader"><span className="expVisualDot"/><span>ENTRADA · CONSULTA DE EJEMPLO</span><span className="expVisualMark">{terminal.has(current?.status??"")?"04":isWaiting?"03":current?"02":"01"} / 04</span></div>
+              <div className="expMessage">
+                <span className="expAvatar" aria-hidden="true">M</span>
+                <div><strong>Mensaje recibido</strong><small>{story.from}</small></div>
+                <span className="expIncoming">NUEVO</span>
+              </div>
+              <blockquote className="expQuote">{story.question}</blockquote>
+              <div className="expClassification">
+                <span>Evaluación de prioridad</span>
+                <strong>{current?.leadId===fixtureId&&current?.priority==="high"?"Alta · pide aprobación":current?.leadId===fixtureId&&current?.priority==="medium"?"Media · sin registro":current?.leadId===fixtureId&&current?.priority==="low"?"Baja · sin registro":"Pendiente de evaluar"}</strong>
+              </div>
+              <div className="expVisualFooter"><span className="expShield" aria-hidden="true">✓</span><span>Las acciones importantes requieren tu autorización.</span></div>
+            </div>
+          </section>
+
+          <section className="expWorkspace" aria-label="Recorrido de demostración">
+            <div className="expSectionTop"><div><span className="expKicker">PROBÁ EL RECORRIDO</span><h2>De la consulta al resultado, en cuatro pasos.</h2>
+              <p>No necesitás configurar integraciones ni escribir código.</p></div>
+              <span className="expRunLimit">{session.budgets.runsRemaining} de 5 pruebas disponibles</span>
+            </div>
+            <div className="expFlowSteps">
+              <div className={"expStep "+(current?"expStepDone":"expStepActive")}><span>01</span><div><strong>Recibir</strong><small>Una consulta llega al sistema</small></div></div>
+              <div className={"expStep "+(current?.priority?"expStepDone":"")}><span>02</span><div><strong>Evaluar</strong><small>Prioridad según reglas simuladas</small></div></div>
+              <div className={"expStep "+(isWaiting?"expStepActive":terminal.has(current?.status??"")?"expStepDone":"")}><span>03</span><div><strong>Decidir</strong><small>Aprobás o rechazás la acción</small></div></div>
+              <div className={"expStep "+(terminal.has(current?.status??"")?"expStepDone":"")}><span>04</span><div><strong>Verificar</strong><small>Resultado guardado y auditable</small></div></div>
+            </div>
+            <div className="expActionGrid">
+              <section className="expCaseCard">
+                <div className="expCardHeading"><span className="expKicker">01 / ELEGÍ UN EJEMPLO</span><span className="expCardIcon">✦</span></div>
+                <h3>¿Qué tipo de consulta recibimos?</h3>
+                <p>Son situaciones inventadas para demostrar distintas decisiones.</p>
+                <div className="expCaseOptions" role="group" aria-label="Elegir consulta de demostración">
+                  {fixtures.map(item=><button key={item.id} type="button" className={"expCaseOption "+(fixtureId===item.id?"expCaseSelected":"")} aria-pressed={fixtureId===item.id} onClick={()=>setFixtureId(item.id)} disabled={busy||Boolean(current&&!terminal.has(current.status))}>
+                    <span className="expCaseRadio" aria-hidden="true"/><span><strong>{storyCases[item.id]?.title??item.name}</strong><small>{storyCases[item.id]?.kind??item.text}</small></span>
+                  </button>)}
+                </div>
+                <button className="expButtonMain expStartButton" disabled={busy||session.budgets.runsRemaining<=0||Boolean(current&&!terminal.has(current.status))}
+                  onClick={()=>void start()}>{busy?"Procesando…":"Procesar esta consulta"} <span aria-hidden="true">→</span></button>
+                <p className="expCaseFoot">Podés probar hasta cinco ejecuciones por sesión, con distintos resultados.</p>
+              </section>
+              <section ref={storyOutcomeRef} className={"expOutcomeCard "+(isWaiting?"expOutcomeWaiting":wasWritten&&current?.status==="completed"?"expOutcomeSuccess":"")} aria-live="polite" aria-label="Resultado de la automatización">
+                <div className="expCardHeading"><span className="expKicker">02 / LO QUE PASA DESPUÉS</span><span className="expLiveFlag"><span/> ESTADO REAL</span></div>
+                {!current?<div className="expEmptyOutcome">
+                  <div className="expOutcomeSymbol">↗</div>
+                  <h3>Tu recorrido empieza acá.</h3>
+                  <p>Elegí una consulta y procesala. Vas a ver cuándo el sistema necesita tu decisión y qué deja registrado.</p>
+                  <div className="expOutcomeTip"><strong>Lo importante</strong><span>El sistema no guarda automáticamente una solicitud prioritaria: primero te pregunta.</span></div>
+                </div>:isWaiting?<div className="expDecision">
+                  <div className="expOutcomeSymbol">!</div>
+                  <span className="expKicker">TU DECISIÓN ES NECESARIA</span>
+                  <h3>¿Guardamos esta consulta en el CRM de prueba?</h3>
+                  <p>La prioridad simulada es alta. No se escribirá ningún registro nuevo hasta que vos lo autorices.</p>
+                  <div className="expDecisionButtons"><button type="button" className="expButtonMain" disabled={busy} onClick={()=>void decide("approved")}>Sí, guardar registro <span aria-hidden="true">→</span></button>
+                  <button type="button" className="expButtonOutline" disabled={busy} onClick={()=>void decide("rejected")}>No, rechazar</button></div>
+                  <small>Tu decisión y el resultado quedan guardados en el historial local.</small>
+                </div>:current.status==="completed"?<div className="expFinished">
+                  <div className="expOutcomeSymbol">{wasWritten?"✓":"✓"}</div>
+                  <span className="expKicker">{wasWritten?"ACCIÓN CONFIRMADA":"FLUJO TERMINADO"}</span>
+                  <h3>{wasWritten?"Registro guardado con éxito.":"Consulta procesada sin alta en CRM."}</h3>
+                  <p>{wasWritten?"Después de tu aprobación, el worker independiente confirmó un registro ficticio en PostgreSQL.":"Este ejemplo no requiere aprobación ni escritura: la condición determinista eligió la ruta informativa."}</p>
+                  <div className="expProofRow"><span>Estado</span><strong>Completada</strong></div>
+                  <div className="expProofRow"><span>Escrituras CRM intentadas</span><strong>{current.crmAttempts}</strong></div>
+                  <div className="expProofRow"><span>Reintentos</span><strong>{current.retryCount}</strong></div>
+                  <div className="expProofActions"><button type="button" className="expButtonOutline" onClick={()=>pickRun(current.id,"activity")}>Ver historia de esta ejecución ↗</button>
+                    {wasWritten&&<button type="button" className="expButtonText" onClick={()=>navigation("crm")}>Ver registro guardado →</button>}</div>
+                </div>:current.status==="cancelled"?<div className="expFinished">
+                  <div className="expOutcomeSymbol expRejectedSymbol">×</div><span className="expKicker">DECISIÓN REGISTRADA</span>
+                  <h3>Se respetó tu rechazo.</h3><p>La ejecución se canceló y no se hizo una nueva escritura en el CRM ficticio.</p>
+                  <button className="expButtonOutline" onClick={()=>pickRun(current.id,"activity")}>Revisar historial ↗</button>
+                </div>:<div className="expEmptyOutcome">
+                  <div className="expOutcomeSymbol expOutcomeProgress">◌</div>
+                  <span className="expKicker">PROCESANDO EN SEGUNDO PLANO</span><h3>{statuses[current.status]??"Procesando consulta"}</h3>
+                  <p>La API creó una ejecución real; el worker está procesando el escenario y registrando cada evento.</p>
+                </div>}
+              </section>
+            </div>
+          </section>
+          <section className="expTrust">
+            <div><span className="expKicker">POR QUÉ IMPORTA</span><h2>Automatización con control y evidencia.</h2>
+              <p>La interfaz muestra decisiones sencillas. Detrás hay API, cola de trabajo, aprobaciones y datos persistentes. Una automatización confiable debe poder explicar qué hizo y cuándo.</p>
+            </div>
+            <button className="expButtonOutline" onClick={()=>navigation("demo")}>Explorar el motor técnico <span aria-hidden="true">↗</span></button>
+          </section>
+          <div className="expFootnote">Proyecto full-stack de portfolio. Ejemplos ficticios, clasificación determinista y CRM local. Sin IA externa ni clientes reales.</div>
         </div>}
         {session&&!sessionExpired&&screen==="demo"&&<>
           <section className="controls slice2Controls" aria-label="Iniciar una automatización sintética">
@@ -521,7 +641,7 @@ export default function Dashboard(){
           </tr>)}</tbody></table></div>:<div className="slice2Empty">
             <strong>Aún no hay escrituras confirmadas.</strong>
             <p>Iniciá un lead de prioridad alta y aprobá la acción desde Demo interactiva.</p>
-            <button className="primary" onClick={()=>navigation("demo")}>Ir a la demo</button>
+            <button className="primary" onClick={()=>navigation("home")}>Probar una consulta</button>
           </div>}
         </section>}
         <footer>Automation Control Room · Fase 5 / Slice 2 · Demo local · Datos sintéticos · Código abierto</footer>
