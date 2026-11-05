@@ -16,6 +16,9 @@ model DemoWorkspace {
   sessions    DemoSession[]
   executions  DemoExecution[]
   crmRecords  DemoCrm[]
+  labWorkflows LabWorkflow[]
+  labExecutions LabExecution[]
+  labRecords LabRecord[]
   @@index([expiresAt])
 }
 model DemoSession {
@@ -96,4 +99,62 @@ model DemoCrm {
   updatedAt DateTime @updatedAt
   workspace DemoWorkspace @relation(fields:[workspaceId],references:[id],onDelete:Cascade)
   @@unique([workspaceId,externalKey])
+}
+
+/**
+ * Graph-driven LAB runtime. Deliberately isolated from the legacy fixed demo.
+ * Workflow graph versions are immutable once published. A run pins a version.
+ */
+model LabWorkflow {
+  id                String @id @db.Uuid
+  workspaceId       String @db.Uuid
+  name              String
+  draft             Json
+  draftRevision     Int @default(0)
+  publishedRevision Int @default(-1)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  workspace         DemoWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  versions          LabVersion[]
+  @@index([workspaceId, createdAt])
+}
+model LabVersion {
+  id           String @id @db.Uuid
+  workflowId   String @db.Uuid
+  versionNo    Int
+  graphDigest  String
+  graph        Json
+  publishedAt  DateTime @default(now())
+  workflow     LabWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  executions   LabExecution[]
+  @@unique([workflowId, versionNo])
+}
+model LabExecution {
+  id               String @id @db.Uuid
+  workspaceId      String @db.Uuid
+  versionId        String @db.Uuid
+  eventId          String
+  input            Json
+  status           String @default("queued")
+  decision         String?
+  approvalNodeId   String?
+  approvalReason   String?
+  trace            Json @default("[]")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  workspace        DemoWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  version          LabVersion @relation(fields: [versionId], references: [id])
+  @@unique([workspaceId, eventId])
+  @@index([workspaceId, createdAt])
+}
+model LabRecord {
+  id          String @id @db.Uuid
+  workspaceId String @db.Uuid
+  externalKey String
+  category    String
+  priority    String
+  executionId String @db.Uuid
+  updatedAt   DateTime @updatedAt
+  workspace   DemoWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  @@unique([workspaceId, externalKey])
 }
