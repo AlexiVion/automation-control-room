@@ -362,7 +362,7 @@ export default function Dashboard(){
           <strong>{screen==="demo"?"Demo":screen==="activity"?"Historial de ejecuciones":"CRM ficticio"}</strong>
         </div>
         <div className="topRight"><span className="environment">LOCAL · SLICE 2</span>
-          <a href="https://github.com/AlexiVion/automation-control-room/tree/feat/phase5-slice2-ux-history-20261104" target="_blank" rel="noreferrer">Código de demo ↗</a></div>
+          <a href="/lab" style={{fontWeight:850,color:"#087d6b"}}>Abrir Workflow Lab ↗</a><a href="https://github.com/AlexiVion/automation-control-room/tree/feat/phase5-slice2-ux-history-20261104" target="_blank" rel="noreferrer">Código de demo ↗</a></div>
       </header>
       <div className="content slice2Content">
         <div className="heading slice2Heading">
