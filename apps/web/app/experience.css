@@ -114,3 +114,7 @@
  .slice2Shell .navItem{font-size:11px;letter-spacing:-.01em;overflow-wrap:anywhere}
  .slice2Shell .navItem small{display:none}
 }
+
+/* Keep technical workspace IDs for the inspector, not on the first-visit surface. */
+.slice2Shell:has(.experienceHome) .sideBottom p{display:none}
+.slice2Shell:has(.experienceHome) .sideBottom{font-size:12px;line-height:1.5}
