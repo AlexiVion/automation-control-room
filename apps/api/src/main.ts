@@ -10,6 +10,7 @@ import { issueSession, resolveSession, budget, CSRF_KEY } from "../../../package
 import { appendEvent } from "../../../packages/runtime/src/events.js";
 import { previewLabWorkflow, LabRuntimeError } from "../../../packages/runtime/src/lab-interpreter.js";
 import { decodeHistoryCursor, encodeHistoryCursor } from "../../../packages/runtime/src/history-cursor.js";
+import { registerLabRoutes } from "./lab-routes.js";
 
 const app=Fastify({logger:{level:"info"},bodyLimit:16*1024});
 await app.register(cookie);
@@ -321,6 +322,7 @@ app.get("/v1/executions/:executionId/events",async(req,reply)=>{
   const heartbeat=setInterval(()=>{if(!raw.destroyed)raw.write(": keepalive\n\n")},15_000);
   raw.on("close",()=>{clearInterval(interval);clearInterval(heartbeat)});
 });
+registerLabRoutes(app,{guest,mutation,http});
 await db.$connect();
 await ensureVersion();
 await initializeBoss();
