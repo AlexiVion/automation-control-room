@@ -8,7 +8,9 @@ import { db, boss, QUEUE, RESUME, initializeBoss, fromPrisma, Prisma } from "../
 import { listFixtures, fixture, ensureVersion, VERSION_ID } from "../../../packages/runtime/src/fixture.js";
 import { issueSession, resolveSession, budget, CSRF_KEY } from "../../../packages/runtime/src/session.js";
 import { appendEvent } from "../../../packages/runtime/src/events.js";
+import { previewLabWorkflow, LabRuntimeError } from "../../../packages/runtime/src/lab-interpreter.js";
 import { decodeHistoryCursor, encodeHistoryCursor } from "../../../packages/runtime/src/history-cursor.js";
+import { registerLabRoutes } from "./lab-routes.js";
 
 const app=Fastify({logger:{level:"info"},bodyLimit:16*1024});
 await app.register(cookie);
@@ -70,6 +72,27 @@ app.get("/v1/demo/me",async req=>{
   const s=await guest(req);
   return {...s,budgets:await budget(s.workspaceId),fixtures:listFixtures()};
 });
+/**
+ * WORKFLOW LAB: bounded real DAG interpretation, NOT a persisted run.
+ * Requires existing guest session + same-origin + CSRF. No external I/O,
+ * DB writes, queues or action execution: planned writes remain intents.
+ */
+app.post("/v1/lab/preview",async(req)=> {
+  await mutation(req);
+  const parsed=z.strictObject({
+    draft:z.unknown(),
+    input:z.record(z.string(),z.unknown()),
+    decision:z.enum(["approved","rejected"]).optional()
+  }).safeParse(req.body);
+  if(!parsed.success)throw new HttpError(422,"INVALID_LAB_REQUEST");
+  try {
+    return previewLabWorkflow(parsed.data.draft,parsed.data.input,parsed.data.decision);
+  }catch(error) {
+    if(error instanceof LabRuntimeError)http(422,error.code);
+    throw error;
+  }
+});
+
 app.post("/v1/demo/events",async(req,reply)=>{
   const s=await mutation(req);
   const parsed=SubmitDemoEventSchema.safeParse(req.body);
@@ -299,6 +322,7 @@ app.get("/v1/executions/:executionId/events",async(req,reply)=>{
   const heartbeat=setInterval(()=>{if(!raw.destroyed)raw.write(": keepalive\n\n")},15_000);
   raw.on("close",()=>{clearInterval(interval);clearInterval(heartbeat)});
 });
+registerLabRoutes(app,{guest,mutation,http});
 await db.$connect();
 await ensureVersion();
 await initializeBoss();

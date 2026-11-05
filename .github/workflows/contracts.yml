@@ -1,4 +1,7 @@
 name: contracts
+concurrency:
+  group: acr-contracts-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 on:
   pull_request:
     paths:
@@ -166,15 +169,14 @@ jobs:
 
       - name: Build and boot full local product Docker Compose + real smoke
         shell: bash
-        env:
-          ACR_WEB_PORT: '33000'
         run: |
+          export ACR_WEB_PORT="$((30000 + GITHUB_RUN_ID % 20000))"
           trap 'docker compose -f ops/compose/product.yml down -v --remove-orphans' EXIT
           docker compose -f ops/compose/product.yml up --build -d web worker
           docker compose -f ops/compose/product.yml --profile test run --rm smoke
           npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.56.1
           npx playwright install --with-deps chromium
-          ACR_BROWSER_BASE=http://localhost:33000 npm run test:browser
+          ACR_BROWSER_BASE="http://localhost:${ACR_WEB_PORT}" npm run test:browser
 
       - name: Upload Slice 2 Chromium evidence
         if: always()
