@@ -1,0 +1,218 @@
+/* Workflow Lab Studio — local-only, actual graph-driven editing.
+   The canvas is supplied by MIT React Flow; these are original studio styles. */
+.labApp{--ink:#142e3b;--sub:#647d87;--border:#dce7e6;--teal:#008a79;
+ --wash:#f5f8f8;font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:var(--ink);
+ min-height:100vh;display:flex;background:var(--wash);font-size:14px;line-height:1.55}
+.labApp *{box-sizing:border-box}
+.labApp button,.labApp input,.labApp select,.labApp textarea{font:inherit}
+.labApp button{cursor:pointer}
+.labApp button:disabled{cursor:not-allowed;opacity:.5}
+.labApp button:focus-visible,.labApp a:focus-visible,
+.labApp input:focus-visible,.labApp select:focus-visible,.labApp textarea:focus-visible{
+ outline:3px solid #64cebc;outline-offset:3px}
+.labSidebar{width:262px;background:#102a38;color:#e7f4f2;min-height:100vh;
+ flex-shrink:0;display:flex;flex-direction:column;padding:25px 16px 21px;
+ box-shadow:inset -1px 0 0 #203e49}
+.labBrand{display:flex;align-items:center;gap:12px;padding:2px 6px 40px;text-decoration:none;color:#fff}
+.labLogo{width:40px;height:40px;display:grid;place-items:center;background:#09a58b;
+ border-radius:11px;font-size:28px;box-shadow:0 6px 24px #00c29c1b}
+.labBrand strong,.labBrand small{display:block}
+.labBrand strong{font-size:13px;letter-spacing:.035em;font-weight:850}
+.labBrand small{font-size:10px;letter-spacing:.12em;color:#80aaae;margin-top:5px}
+.labSideGroup{margin-bottom:30px;display:grid;gap:5px}
+.labSideLabel{font-size:10px;font-weight:850;letter-spacing:.14em;color:#78a1a9;margin:0 10px 10px}
+.labTemplate{width:100%;border:1px solid transparent;color:#d6eae7;background:transparent;
+ display:flex;align-items:center;gap:11px;border-radius:11px;padding:12px 9px;text-align:left}
+.labTemplate>span:first-child{font-size:17px;color:#79dcca}
+.labTemplate>span:last-child{margin-left:auto;font-size:18px;color:#5cb2a2}
+.labTemplate strong,.labTemplate small{display:block}
+.labTemplate strong{font-size:12px;font-weight:730;line-height:1.3}
+.labTemplate small{font-size:10px;line-height:1.45;color:#8cabb1;margin-top:4px}
+.labTemplate:hover,.labSaved:hover{background:#1f3c49;border-color:#33545a}
+.labSaved{display:flex;align-items:center;gap:9px;width:100%;border:1px solid transparent;
+ background:transparent;text-align:left;padding:12px 9px;border-radius:9px;color:#cbdfe0;font-size:12px}
+.labSaved span:nth-child(2){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.labSaved>span:first-child{color:#63cdb4;font-size:17px}
+.labSaved small{font-size:10px;color:#83adac}
+.labSaved.active{background:#1b444b;color:#fff;border-color:#2f615f}
+.labSidebarEmpty{color:#83a9ad;font-size:11px;line-height:1.5;margin:3px 10px}
+.labSidebarFoot{margin-top:auto;background:#1b3a43;border:1px solid #31505a;border-radius:12px;
+ padding:17px;color:#e4f8f4}
+.labSidebarFoot strong{font-size:12px;font-weight:780}
+.labSidebarFoot p{color:#a1bdc1;font-size:11px;line-height:1.65;margin:8px 0 13px}
+.labSidebarFoot a{color:#84daca;text-decoration:none;font-size:11px;font-weight:700}
+.labMain{flex:1;min-width:0;padding:29px clamp(18px,3vw,48px) 25px;max-width:2000px}
+.labTopbar{display:flex;justify-content:space-between;align-items:center;gap:18px;margin:0 0 27px}
+.labOverline{font-size:10px;letter-spacing:.15em;color:#078a7b;font-weight:850}
+.labTopbar h1{font-size:clamp(25px,2.8vw,37px);letter-spacing:-.055em;font-weight:820;
+ line-height:1.15;margin:6px 0 7px}
+.labTopbar p{font-size:13px;color:#5a717c;margin:0}
+.labLocalTag{flex-shrink:0;border:1px solid #bae3d7;border-radius:99px;background:#e6f7f0;
+ color:#117d66;font-size:10px;font-weight:850;letter-spacing:.05em;padding:10px 13px}
+.labAlert,.labNotice{display:flex;align-items:center;justify-content:space-between;gap:12px;
+ border:1px solid #e4aaad;background:#fff1f2;color:#9c303b;border-radius:10px;
+ padding:12px 16px;margin-bottom:17px;font-size:12px}
+.labNotice{border-color:#beded9;background:#e9f6f2;color:#286a61}
+.labAlert button{color:inherit;background:transparent;border:0;font-size:19px}
+.labToolbar{border:1px solid var(--border);background:#fff;border-radius:13px 13px 0 0;
+ padding:15px 19px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.labWorkflowName{display:flex;align-items:center;gap:14px;font-size:10px;letter-spacing:.12em;
+ font-weight:850;color:#66808a;min-width:0}
+.labWorkflowName input{color:#213c46;letter-spacing:-.02em;border:0;background:transparent;
+ min-width:0;width:clamp(180px,27vw,420px);font-size:16px;font-weight:760;padding:9px}
+.labToolbarActions{display:flex;align-items:center;gap:9px}
+.labDirty{color:#658279;font-size:10px;font-weight:700;white-space:nowrap;margin-right:7px}
+.labDirty.unsaved{color:#b57d24}
+.labBtnPrimary,.labBtnNeutral{min-height:41px;padding:10px 16px;border-radius:9px;
+ border:1px solid #008875;font-size:12px!important;line-height:1.35;font-weight:750!important;white-space:nowrap}
+.labBtnPrimary{color:#fff;background:#07977e;box-shadow:0 6px 12px #01786616}
+.labBtnPrimary:hover:enabled{background:#087a69}
+.labBtnNeutral{color:#225c56;background:#fff;border-color:#c1d6d2}
+.labBtnNeutral:hover:enabled{background:#f1faf7}
+.labWorkspace{display:grid;grid-template-columns:205px minmax(0,1fr) 265px;min-height:600px;
+ border:1px solid var(--border);border-top:0;border-radius:0 0 13px 13px;background:#fff;
+ overflow:hidden;box-shadow:0 14px 36px #1539400b}
+.labPalette,.labInspector{background:#fff;padding:25px 17px;min-width:0}
+.labPalette{border-right:1px solid #e5eeee}
+.labInspector{border-left:1px solid #e5eeee}
+.labPanelLabel{color:#5f8184;letter-spacing:.13em;font-weight:850;font-size:10px}
+.labPalette>p{font-size:11px;color:#798c97;line-height:1.65;margin:10px 0 20px}
+.labPaletteOption{border:1px solid #e7efee;background:#fff;border-radius:9px;margin-bottom:8px;
+ text-align:left;width:100%;display:flex;align-items:center;gap:11px;padding:11px}
+.labPaletteOption:hover{background:#f0f9f6;border-color:#85cdbf}
+.labPalettePlus{display:grid;place-items:center;width:27px;height:27px;flex-shrink:0;
+ border:1px solid #c0ddd5;border-radius:8px;background:#eaf8f2;color:#07826d;font-size:18px}
+.labPaletteOption strong,.labPaletteOption small{display:block}
+.labPaletteOption strong{font-size:11px;color:#24404c}
+.labPaletteOption small{font-size:9.5px;color:#718a93;line-height:1.4;margin-top:4px}
+.labPaletteHint{border-top:1px solid #ebefef;padding-top:15px;margin-top:17px;
+ color:#728b91;font-size:10px;line-height:1.7}
+.labCanvasWrap{display:flex;min-width:0;flex-direction:column;background:#f9fcfc}
+.labCanvasTitle{display:flex;align-items:center;justify-content:space-between;padding:16px 19px;
+ border-bottom:1px solid #e6eeee;color:#48666d;font-size:10px;letter-spacing:.11em;font-weight:850}
+.labCanvasTitle small{color:#879a9f;letter-spacing:0;font-size:10px;font-weight:650}
+.labCanvasDot{display:inline-block;width:7px;height:7px;background:#1cb99a;border-radius:50%;margin-right:7px}
+.labCanvas{width:100%;height:575px;position:relative;background:#f8fbfc}
+.labCanvas .react-flow__controls{box-shadow:0 4px 15px #1737401c;border:1px solid #e1ebeb;overflow:hidden;border-radius:9px}
+.labCanvas .react-flow__controls-button{background:#fff;color:#526b73;border:0;border-bottom:1px solid #edf1f1}
+.labCanvas .react-flow__minimap{background:#fff;border:1px solid #dce8e5;border-radius:8px;overflow:hidden}
+.labCanvasFoot{display:flex;gap:22px;align-items:center;flex-wrap:wrap;border-top:1px solid #e6eeee;
+ padding:12px 18px;font-size:10px;color:#70868c}
+.labCanvasFoot i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22a58b;margin-right:5px}
+.labCanvasFoot span:nth-child(2) i{background:#d59b4e}
+.labFlowCard{position:relative;min-width:178px;max-width:195px;min-height:102px;
+ padding:13px 16px;border-radius:11px;background:#fff;border:1.5px solid #cddbdc;
+ box-shadow:0 7px 20px #0d3f4c13;color:#264451;transition:box-shadow .15s,border-color .15s}
+.labFlowCard.selected{border-color:#01957e;box-shadow:0 0 0 3px #10b69a28,0 9px 25px #063c371d}
+.labFlowCard strong,.labFlowCard small,.labFlowKind{display:block}
+.labFlowKind{font-size:9px;text-transform:uppercase;color:#1d8d7b;letter-spacing:.08em;font-weight:830;margin-bottom:8px}
+.labFlowCard strong{font-size:12px;overflow-wrap:anywhere;line-height:1.3}
+.labFlowCard small{font-size:9px;color:#748995;line-height:1.5;margin-top:6px}
+.labFlowCard.is-executed{border-color:#25b28c;background:#f5fef9}
+.labFlowCard.is-planned{border-color:#cea255}
+.labFlowCard.is-waiting{border-color:#d1a14f;background:#fffaf0}
+.labFlowCard.is-rejected{border-color:#e68a87;background:#fff4f3}
+.labFlowRunState{display:block;margin-top:7px;font-size:9px;color:#2c8f7a;font-weight:800}
+.labFlowCard .react-flow__handle{width:10px;height:10px;background:#11a789;border:2px solid #fff}
+.labHandleLabels{position:absolute;right:-28px;top:23px;font-size:9px;font-weight:850;line-height:2.9;color:#618087}
+.labInspectorEmpty{display:grid;place-items:center;text-align:center;padding:85px 14px;gap:12px}
+.labInspectorEmpty span{display:grid;place-items:center;width:55px;height:55px;background:#edf6f3;border:1px solid #d5e8e2;border-radius:15px;font-size:30px;color:#2e9480}
+.labInspectorEmpty strong{font-size:13px}
+.labInspectorEmpty p{font-size:11px;color:#718792;line-height:1.7;margin:0}
+.labConfig{padding-top:22px;display:grid;gap:15px}
+.labConfigHeader{padding-bottom:14px;border-bottom:1px solid #e8eeee;display:grid;gap:5px}
+.labConfigHeader strong{font-size:18px;letter-spacing:-.035em}
+.labConfigHeader small{color:#7a939a;overflow-wrap:anywhere;font-size:10px}
+.labConfig label,.labExecControls label{display:grid;gap:8px;color:#5c7680;font-size:11px;font-weight:750}
+.labConfig input,.labConfig textarea,.labConfig select,.labExecControls input,.labExecControls textarea,.labExecControls select{
+ padding:11px 12px;border:1px solid #d2e0df;border-radius:8px;color:#233f4c;font-size:11px;
+ background:#fff;min-width:0;max-width:100%;width:100%;line-height:1.6}
+.labConfig textarea,.labExecControls textarea{resize:vertical}
+.labConfig>small{color:#718891;font-size:10px;line-height:1.65}
+.labConfig>p{color:#6b8289;font-size:12px;line-height:1.7}
+.labDanger{background:#fff;border:1px solid #e2bbbb;color:#ae6262;border-radius:8px;
+ padding:10px;font-size:11px;font-weight:750;margin-top:10px}
+.labDanger:hover{background:#fff1f1}
+.labExecution{display:grid;grid-template-columns:minmax(300px,.9fr) minmax(0,1.3fr);
+ gap:18px;margin-top:22px}
+.labExecutionLeft,.labExecutionRight{border:1px solid var(--border);background:#fff;
+ border-radius:14px;padding:27px;min-width:0;box-shadow:0 9px 30px #17393c07}
+.labExecutionLeft h2{margin:6px 0 9px;font-size:27px;letter-spacing:-.045em}
+.labExecutionLeft>p{font-size:12px;color:#66818a;line-height:1.7;margin:0 0 22px}
+.labExecControls{display:grid;gap:16px}
+.labExecControls textarea{font-family:ui-monospace,monospace;font-size:12px;background:#f9fbfb}
+.labExecControls .labBtnPrimary{width:100%;text-align:center}
+.labRunLimit{font-size:10px;color:#779096;line-height:1.65;margin-top:15px}
+.labResultsHead{display:flex;align-items:start;justify-content:space-between;gap:18px;margin-bottom:18px}
+.labResultsHead h3{font-size:21px;line-height:1.3;letter-spacing:-.035em;margin:7px 0 0}
+.labResultTabs{display:flex;background:#f0f5f4;border:1px solid #dbe6e4;border-radius:9px;padding:3px;gap:2px}
+.labResultTabs button{border:0;background:transparent;color:#647e83;padding:8px 12px;border-radius:6px;font-size:11px;font-weight:730}
+.labResultTabs button.active{background:#fff;color:#0c7665;box-shadow:0 1px 3px #1c45491a}
+.labTrace{border:1px solid #e3ecea;border-radius:10px;min-height:200px;max-height:390px;overflow:auto}
+.labTraceEmpty{padding:45px 22px;text-align:center;color:#83969b;font-size:12px;line-height:1.7}
+.labTraceVersion{display:block;padding:13px 19px;border-bottom:1px solid #e9eeed;background:#f9fbfb;
+ font-size:10px;color:#5a7d7d;font-weight:830;letter-spacing:.07em}
+.labTraceStep{display:flex;align-items:start;gap:12px;padding:14px 18px;border-bottom:1px solid #edf1f1}
+.labTraceStep:last-child{border:0}
+.labTraceNumber{font-family:ui-monospace,monospace;font-size:10px;color:#a3b3b7;padding-top:3px}
+.labTraceStep>div{flex:1;min-width:0}
+.labTraceStep strong{display:block;font-size:12px;color:#24414c}
+.labTraceStep span:not(.labTraceNumber){display:block;font-size:11px;color:#6e858c;margin-top:4px}
+.labTraceStep small{font-size:10px;color:#2f8f7e;background:#eaf8f3;
+ padding:4px 7px;border-radius:6px;white-space:nowrap}
+.labApproval{padding:17px 19px;margin-bottom:17px;border-radius:11px;border:1px solid #efd5a5;
+ background:#fffaf0}
+.labApproval strong{color:#80602b;font-size:13px}
+.labApproval p{font-size:11px;color:#916e3b;line-height:1.7}
+.labApproval>div{display:flex;flex-wrap:wrap;gap:9px}
+.labCompareCard{padding:19px 20px;border-bottom:1px solid #e5eeee}
+.labCompareCard strong{font-size:12px;color:#245f56}
+.labCompareCard p{margin:6px 0 0;color:#6b8590;font-size:11px;overflow-wrap:anywhere}
+.labHistoryLine{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:14px;font-size:10px;color:#718992}
+.labHistoryLine button{background:#eef6f3;border:1px solid #c9e4dc;color:#246f63;border-radius:6px;padding:5px 8px;font:inherit}
+.labFooter{padding:28px 5px;color:#82959b;font-size:10px;text-align:center;line-height:1.6}
+@media(max-width:1480px){
+  .labSidebar{width:235px}.labWorkspace{grid-template-columns:174px minmax(0,1fr) 232px}
+  .labPalette,.labInspector{padding:18px 12px}.labMain{padding:24px}
+  .labFlowCard{min-width:160px;max-width:175px}
+}
+@media(max-width:1170px){
+  .labSidebar{width:200px;padding:19px 10px}
+  .labWorkspace{grid-template-columns:170px minmax(0,1fr)}
+  .labInspector{grid-column:1/-1;border-left:0;border-top:1px solid #e5eeee}
+  .labInspectorEmpty{padding:22px}.labConfig{grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+  .labConfigHeader{grid-column:1/-1}
+  .labExecution{grid-template-columns:1fr}
+}
+@media(max-width:800px){
+  .labApp{display:block}
+  .labSidebar{width:100%;min-height:0;display:block;padding:12px 15px}
+  .labBrand{padding:0 0 13px}
+  .labSideGroup{display:flex;gap:8px;overflow-x:auto;margin-bottom:8px}
+  .labSideLabel,.labSidebarFoot{display:none}
+  .labTemplate{min-width:180px;width:auto;padding:10px}
+  .labSaved{min-width:135px;width:auto}
+  .labMain{padding:17px 14px}.labTopbar{display:block}
+  .labLocalTag{display:inline-block;margin-top:13px}
+  .labWorkspace{grid-template-columns:1fr}
+  .labPalette{display:flex;overflow-x:auto;align-items:center;gap:7px;padding:12px;border-right:0;border-bottom:1px solid #e5eeee}
+  .labPalette>.labPanelLabel,.labPalette>p,.labPaletteHint{display:none}
+  .labPaletteOption{width:140px;min-width:140px;margin:0}
+  .labCanvas{height:455px}
+  .labInspector{grid-column:auto}
+  .labToolbar{display:block}.labWorkflowName{margin-bottom:13px}
+  .labToolbarActions{flex-wrap:wrap}.labConfig{grid-template-columns:1fr 1fr}
+}
+@media(max-width:540px){
+  .labTopbar h1{font-size:27px}.labTopbar p{font-size:12px}
+  .labToolbarActions{gap:7px}
+  .labDirty{width:100%;margin-bottom:4px}
+  .labCanvas{height:395px}
+  .labCanvasTitle small{display:none}
+  .labFlowCard{min-width:150px;max-width:160px;min-height:90px}
+  .labCanvasFoot{gap:8px}.labConfig{grid-template-columns:1fr}
+  .labExecutionLeft,.labExecutionRight{padding:18px 16px}
+  .labResultsHead{display:block}
+  .labResultTabs{margin-top:13px;width:max-content}
+}
+@media(prefers-reduced-motion:reduce){.labFlowCard{transition:none}}
