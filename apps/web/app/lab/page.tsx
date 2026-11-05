@@ -38,7 +38,7 @@ type Run={
 let sessionPromise:Promise<Session>|null=null;
 async function fetchJSON<T>(path:string,method="GET",csrf?:string,body?:unknown):Promise<T>{
   const response=await fetch(path,{credentials:"include",cache:"no-store",method,
-    headers:{"Content-Type":"application/json",...(csrf?{"X-ACR-CSRF":csrf}:{})},
+    headers:{...(body===undefined?{}:{"Content-Type":"application/json"}),...(csrf?{"X-ACR-CSRF":csrf}:{})},
     ...(body===undefined?{}:{body:JSON.stringify(body)})});
   const value=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(value.error?.code??"HTTP_"+response.status);

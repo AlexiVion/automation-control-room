@@ -17,6 +17,11 @@ try{
   await page.locator(".labFlowCard").first().waitFor({timeout});
   assert.equal(await page.locator(".labFlowCard").count(),6);
   assert.equal(await page.locator(".react-flow__edge").count(),5);
+  await page.waitForFunction(()=>{
+    const button=[...document.querySelectorAll("button")].find(x=>x.textContent?.includes("Publicar versión"));
+    return button && !button.disabled;
+  },null,{timeout});
+  assert.equal(await page.locator(".labAlert").count(),0,"Session boot must not emit INTERNAL_ERROR");
   await page.screenshot({path:path.join(evidence,"10-real-workflow-lab-editor.png"),fullPage:true});
   console.log("PASS user-authored React Flow editor renders real DAG with 6 nodes and 5 edges");
 
