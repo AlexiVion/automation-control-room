@@ -118,3 +118,10 @@
 /* Keep technical workspace IDs for the inspector, not on the first-visit surface. */
 .slice2Shell:has(.experienceHome) .sideBottom p{display:none}
 .slice2Shell:has(.experienceHome) .sideBottom{font-size:12px;line-height:1.5}
+
+/* Engineering phase labels belong on GitHub, not in first-visit product copy. */
+.slice2Shell:has(.experienceHome) .slice2Content>footer{display:none}
+/* Accessible keyboard skip link must be visually clipped until actually focused;
+   a transformed offscreen fixed element can leak into full-page screenshots. */
+.slice2Shell .skipLink:not(:focus){width:1px;height:1px;clip-path:inset(50%);overflow:hidden;top:-100px;transform:none}
+.slice2Shell .skipLink:focus{width:auto;height:auto;clip-path:none;top:8px;transform:none}
