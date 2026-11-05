@@ -105,6 +105,10 @@ export function previewLabWorkflow(
       validated.issues.map(issue => issue.code + ": " + issue.message).join("; ").slice(0,1200));
   }
   const graph: WorkflowDraft = validated.draft;
+  if (graph.nodes.filter(node => node.type === "approval").length > 1) {
+    throw new LabRuntimeError("MULTIPLE_APPROVALS_UNSUPPORTED",
+      "The first sandbox engine supports one approval per graph");
+  }
   for (const node of graph.nodes) {
     if (node.type === "ai.classify" || node.type === "http.request") unsupported(node);
   }
