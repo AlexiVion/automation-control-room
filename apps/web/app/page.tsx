@@ -298,7 +298,7 @@ export default function Dashboard(){
   }
   const current=snapshot?.execution??null;
   const events=snapshot?.events??[];
-  const story=storyCases[current?.leadId??fixtureId]??storyCases.lead_demo_001;
+  const story=storyCases[fixtureId]??storyCases.lead_demo_001;
   const wasWritten=events.some(e=>e.eventType==="crm.confirmed");
   const isWaiting=current?.status==="waiting_approval"&&snapshot?.approval?.status==="pending";
   useEffect(()=>{
@@ -424,7 +424,7 @@ export default function Dashboard(){
               <p className="expTruthNote">Demo sin datos reales · Clasificación simulada · CRM local ficticio</p>
             </div>
             <div className="expHeroVisual" aria-label="Vista previa de una consulta ficticia">
-              <div className="expVisualHeader"><span className="expVisualDot"/><span>ENTRADA · CONSULTA DE EJEMPLO</span><span className="expVisualMark">01 / 04</span></div>
+              <div className="expVisualHeader"><span className="expVisualDot"/><span>ENTRADA · CONSULTA DE EJEMPLO</span><span className="expVisualMark">{terminal.has(current?.status??"")?"04":isWaiting?"03":current?"02":"01"} / 04</span></div>
               <div className="expMessage">
                 <span className="expAvatar" aria-hidden="true">M</span>
                 <div><strong>Mensaje recibido</strong><small>{story.from}</small></div>
@@ -433,7 +433,7 @@ export default function Dashboard(){
               <blockquote className="expQuote">{story.question}</blockquote>
               <div className="expClassification">
                 <span>Evaluación de prioridad</span>
-                <strong>{current?.priority==="high"?"Alta · pide aprobación":current?.priority==="medium"?"Media · sin registro":current?.priority==="low"?"Baja · sin registro":"Pendiente de evaluar"}</strong>
+                <strong>{current?.leadId===fixtureId&&current?.priority==="high"?"Alta · pide aprobación":current?.leadId===fixtureId&&current?.priority==="medium"?"Media · sin registro":current?.leadId===fixtureId&&current?.priority==="low"?"Baja · sin registro":"Pendiente de evaluar"}</strong>
               </div>
               <div className="expVisualFooter"><span className="expShield" aria-hidden="true">✓</span><span>Las acciones importantes requieren tu autorización.</span></div>
             </div>
@@ -641,7 +641,7 @@ export default function Dashboard(){
           </tr>)}</tbody></table></div>:<div className="slice2Empty">
             <strong>Aún no hay escrituras confirmadas.</strong>
             <p>Iniciá un lead de prioridad alta y aprobá la acción desde Demo interactiva.</p>
-            <button className="primary" onClick={()=>navigation("demo")}>Ir a la demo</button>
+            <button className="primary" onClick={()=>navigation("home")}>Probar una consulta</button>
           </div>}
         </section>}
         <footer>Automation Control Room · Fase 5 / Slice 2 · Demo local · Datos sintéticos · Código abierto</footer>
