@@ -10,10 +10,38 @@ const browser=await chromium.launch({headless:true});
 const errors=[];
 const timeout=30_000;
 try {
+
+  // A visitor sees the *reason for the product* and a complete business story
+  // before the advanced graph. This is a separate guest, so existing run-quota
+  // tests can keep exercising all five technical scenarios in their own session.
+  const guidedContext=await browser.newContext({viewport:{width:1440,height:900}});
+  const guided=await guidedContext.newPage();
+  guided.on("pageerror",error=>errors.push(String(error)));
+  await guided.goto(base,{waitUntil:"domcontentloaded",timeout});
+  await guided.getByRole("heading",{name:/Una consulta entra/}).waitFor({timeout});
+  await guided.getByText(/espera tu aprobación y recién entonces guarda el contacto/i).waitFor({timeout});
+  await guided.getByRole("button",{name:"Procesar esta consulta"}).waitFor({timeout});
+  const firstFold=await guided.locator(".expHero").boundingBox();
+  assert.ok(firstFold&&firstFold.y<180&&firstFold.height<750,
+    "Purpose and use case should appear on the first desktop viewport");
+  await guided.screenshot({path:path.join(evidence,"07-guided-first-visit-desktop.png"),fullPage:true});
+  await guided.getByRole("button",{name:"Procesar esta consulta"}).click();
+  await guided.getByRole("heading",{name:"¿Guardamos esta consulta en el CRM de prueba?"}).waitFor({timeout});
+  await guided.getByText(/No se escribirá ningún registro nuevo hasta que vos lo autorices/).waitFor({timeout});
+  await guided.screenshot({path:path.join(evidence,"08-guided-human-approval-desktop.png"),fullPage:true});
+  await guided.getByRole("button",{name:/Sí, guardar registro/}).click();
+  await guided.getByRole("heading",{name:"Registro guardado con éxito."}).waitFor({timeout});
+  await guided.getByText(/worker independiente confirmó un registro ficticio en PostgreSQL/).waitFor({timeout});
+  await guided.screenshot({path:path.join(evidence,"09-guided-confirmed-outcome-desktop.png"),fullPage:true});
+  await guided.getByRole("button",{name:/Ver registro guardado/}).click();
+  await guided.getByText("lead_demo_001",{exact:true}).first().waitFor({timeout});
+  await guidedContext.close();
+  console.log("PASS outcome-led welcome, guided simulation, human approval and persisted CRM result");
+
   const context=await browser.newContext({viewport:{width:1440,height:900}});
   const page=await context.newPage();
   page.on("pageerror",error=>errors.push(String(error)));
-  await page.goto(base,{waitUntil:"domcontentloaded",timeout});
+  await page.goto(base+"?view=demo",{waitUntil:"domcontentloaded",timeout});
   assert.match(await page.title(),/Automation Control Room/);
   await page.getByRole("heading",{name:"Tu automatización, paso a paso"}).waitFor({timeout});
   await page.getByRole("button",{name:/Iniciar automatización/}).waitFor({state:"visible",timeout});
@@ -184,6 +212,8 @@ try {
   const mobile=await isolated.newPage();
   mobile.on("pageerror",error=>errors.push(String(error)));
   await mobile.goto(base,{waitUntil:"domcontentloaded",timeout});
+  await mobile.getByRole("heading",{name:/Una consulta entra/}).waitFor({timeout});
+  await mobile.getByRole("button",{name:"Vista técnica"}).click();
   await mobile.getByRole("heading",{name:"Tu automatización, paso a paso"}).waitFor({timeout});
   const mobileNavFont=await mobile.getByRole("button",{name:/Historial/})
     .evaluate(element=>Number.parseFloat(getComputedStyle(element).fontSize));
@@ -203,7 +233,7 @@ try {
   console.log("PASS browser mobile labelled navigation, viewport and guest isolation");
   // Expiration and stale links must recover explicitly rather than trapping visitors.
   await context.clearCookies();
-  await page.getByRole("button",{name:/Demo interactiva/}).click();
+  await page.getByRole("button",{name:"Vista técnica"}).click();
   await page.getByRole("button",{name:"Actualizar ejecución"}).click();
   await page.getByRole("button",{name:"Iniciar nueva sesión demo"}).waitFor({timeout});
   await page.screenshot({path:path.join(evidence,"06-expired-session-recovery.png"),fullPage:false});
@@ -236,6 +266,8 @@ try {
   await bootPage.unroute("**/v1/demo/me");
   await bootPage.getByRole("button",{name:"Reintentar conexión"}).click();
   await bootPage.locator(".sideBottom strong").waitFor({timeout});
+  await bootPage.getByRole("heading",{name:/Una consulta entra/}).waitFor({timeout});
+  await bootPage.getByRole("button",{name:"Vista técnica"}).click();
   await bootPage.locator(".graphNode").first().waitFor({timeout});
   assert.equal(creates,1,"Explicit retry should create exactly one isolated demo guest");
   console.log("PASS boot transient 503 shows retry and recovers without silent workspace churn");
