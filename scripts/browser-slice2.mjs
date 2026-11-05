@@ -246,3 +246,6 @@ try {
 }finally{
   await browser.close();
 }
+
+// The same CI job also verifies actual workflow authoring, v1/v2 editing and live execution.
+await import("./browser-lab.mjs");
