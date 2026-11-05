@@ -1,7 +1,8 @@
 import { randomUUID, createHash } from "node:crypto";
-import { boss, db, QUEUE, RESUME, initializeBoss, fromPrisma } from "../../../packages/runtime/src/db.js";
+import { boss, db, QUEUE, RESUME, LAB_RUN, initializeBoss, fromPrisma } from "../../../packages/runtime/src/db.js";
 import { fixture, type FixtureId, ensureVersion } from "../../../packages/runtime/src/fixture.js";
 import { appendEvent } from "../../../packages/runtime/src/events.js";
+import { previewLabWorkflow } from "../../../packages/runtime/src/lab-interpreter.js";
 
 async function classify(executionId:string) {
   await db.$transaction(async tx=>{
@@ -106,6 +107,93 @@ async function expireApprovals() {
     });
   }
 }
+
+/**
+ * The LAB worker executes the exact immutable LabVersion graph that was
+ * published by the user. Distinct from the legacy hardcoded lead worker.
+ * One PostgreSQL transaction contains claim, decisions and local writes:
+ * a worker crash cannot acknowledge an uncommitted side effect.
+ */
+async function runUserGraph(executionId: string) {
+  try {
+    await db.$transaction(async tx=>{
+      const run=await tx.labExecution.findUnique({
+        where:{id:executionId},include:{version:true}
+      });
+      if(!run)return;
+      const claimed=await tx.labExecution.updateMany({
+        where:{id:run.id,status:"queued"},data:{status:"running"}
+      });
+      if(claimed.count!==1)return;
+      const decided=run.decision==="approved"?"approved":
+        run.decision==="rejected"?"rejected":undefined;
+      const result=previewLabWorkflow(run.version.graph,run.input,decided);
+      if(result.status==="waiting_approval"){
+        await tx.labExecution.update({where:{id:run.id},data:{
+          status:"waiting_approval",
+          approvalNodeId:result.nextApproval?.nodeId??null,
+          approvalReason:result.nextApproval?.reason??null,
+          trace:JSON.parse(JSON.stringify(result.trace))
+        }});
+        return;
+      }
+      const confirmedTrace=result.trace.map(step=>({...step}));
+      for(const intent of result.plannedActions){
+        const record=intent.record;
+        await tx.labRecord.upsert({
+          where:{workspaceId_externalKey:{
+            workspaceId:run.workspaceId,externalKey:record.leadId
+          }},
+          create:{
+            id:randomUUID(),workspaceId:run.workspaceId,
+            externalKey:record.leadId,category:record.category,
+            priority:record.priority,executionId:run.id
+          },
+          update:{
+            category:record.category,priority:record.priority,executionId:run.id
+          }
+        });
+        const step=confirmedTrace.find(x=>x.nodeId===intent.nodeId);
+        if(step){
+          step.status="executed";
+          step.message="Local record committed in PostgreSQL";
+        }
+      }
+      await tx.labExecution.update({where:{id:run.id},data:{
+        status:result.status,
+        trace:JSON.parse(JSON.stringify(confirmedTrace))
+      }});
+      await tx.demoWorkspace.updateMany({
+        where:{id:run.workspaceId,activeRuns:{gt:0}},
+        data:{activeRuns:{decrement:1}}
+      });
+    });
+  }catch(error){
+    // On a deterministic domain failure, release the local demo run slot and
+    // record an explicit failure. This never replays committed writes: the
+    // original transaction already rolled back atomically.
+    const problem=error instanceof Error?error.message:String(error);
+    console.error("Workflow Lab execution failed",executionId,problem);
+    await db.$transaction(async tx=>{
+      const changed=await tx.labExecution.updateMany({
+        where:{id:executionId,status:"queued"},data:{status:"failed"}
+      });
+      if(changed.count){
+        const run=await tx.labExecution.findUniqueOrThrow({where:{id:executionId}});
+        await tx.labExecution.update({where:{id:executionId},data:{
+          trace:[{nodeId:"runtime",type:"finish",status:"rejected",
+            message:"Execution failed validation or safe processing"}]
+        }});
+        await tx.demoWorkspace.updateMany({
+          where:{id:run.workspaceId,activeRuns:{gt:0}},
+          data:{activeRuns:{decrement:1}}
+        });
+      }
+    });
+    // Leave a handled, visibly failed run rather than infinite queue retries.
+  }
+}
+
 await db.$connect();
 await ensureVersion();
 await initializeBoss();
@@ -114,6 +202,9 @@ await boss.work(QUEUE,{pollingIntervalSeconds:0.5},async jobs=>{
 });
 await boss.work(RESUME,{pollingIntervalSeconds:0.5},async jobs=>{
   for(const job of jobs)await continueAfterApproval((job.data as {executionId:string}).executionId);
+});
+await boss.work(LAB_RUN,{pollingIntervalSeconds:0.5},async jobs=>{
+  for(const job of jobs)await runUserGraph((job.data as {executionId:string}).executionId);
 });
 const ticker=setInterval(async()=>{
   try{
