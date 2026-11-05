@@ -74,7 +74,7 @@ describe("Workflow Lab graph execution", () => {
   it("shows deterministic behavior change after author edits a node config", () => {
     const v1 = previewLabWorkflow(support, sameInput);
     const altered = structuredClone(support);
-    altered.nodes[1].config.value = "go";
+    (altered.nodes[1] as {config:{value:string}}).config.value = "go";
     const v2 = previewLabWorkflow(altered, sameInput);
     expect(v1.status).toBe("completed");
     expect(v2.status).toBe("waiting_approval");
