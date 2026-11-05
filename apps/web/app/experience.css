@@ -111,6 +111,6 @@
 /* Four honest destinations rather than a three-column layout with one orphan item. */
 @media(max-width:660px){
  .slice2Shell .sideNav{grid-template-columns:repeat(4,minmax(0,1fr))}
- .slice2Shell .navItem{font-size:10.5px;letter-spacing:-.01em;overflow-wrap:anywhere}
+ .slice2Shell .navItem{font-size:11px;letter-spacing:-.01em;overflow-wrap:anywhere}
  .slice2Shell .navItem small{display:none}
 }
